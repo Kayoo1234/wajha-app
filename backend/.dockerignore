@@ -1,0 +1,21 @@
+# Keep the Docker build context small and never ship secrets or local venv into the image.
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+.env.local
+.env.*.local
+*.log
+tests/__pycache__/
+.git/
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+fly.toml
+DEPLOY.md

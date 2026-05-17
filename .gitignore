@@ -1,0 +1,49 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+.mcp.json
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Ingestion artifacts (large; not for git)
+ingestion/output/*.jsonl
+ingestion/cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Playwright
+playwright-report/
+test-results/

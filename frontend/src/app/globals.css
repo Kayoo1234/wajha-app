@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #18181b;          /* zinc-900 */
+  --aura-primary: #6d28d9;        /* violet-700, Aura accent */
+  --aura-primary-dark: #4c1d95;   /* violet-900 */
+  --aura-cream: #faf7f2;          /* warm off-white */
+  --muted: #71717a;               /* zinc-500 */
+  --border: #e4e4e7;              /* zinc-200 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-aura: var(--aura-primary);
+  --color-aura-dark: var(--aura-primary-dark);
+  --color-aura-cream: var(--aura-cream);
+  --color-border: var(--border);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Subtle scroll for horizontal rails */
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+}
+.snap-start {
+  scroll-snap-align: start;
+}

@@ -1,0 +1,27 @@
+# Ingestion deps — scrapers (Phase 2) + embeddings + upsert (Phase 3)
+
+# Scraping
+playwright==1.49.0
+httpx[http2]==0.27.2
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
+# Embeddings — CLIP via sentence-transformers (pulls torch automatically)
+sentence-transformers==3.3.1
+pillow==11.0.0
+numpy==1.26.4
+
+# Cohere multilingual text embeddings
+cohere==5.13.3
+
+# Supabase
+supabase==2.10.0
+postgrest==0.18.0
+
+# Env + utils
+python-dotenv==1.0.1
+tenacity==9.0.0
+tqdm==4.67.1
+
+# Dev / verification
+pytest==8.3.4
