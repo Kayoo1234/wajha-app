@@ -12,6 +12,7 @@ const BRAND_ORDER = [
   "mothercare",
   "bath_body_works",
   "raising_canes",
+  "starbucks",
 ];
 
 export default function BrandChips({
