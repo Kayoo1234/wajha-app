@@ -165,6 +165,28 @@ function SearchMode() {
   // re-firing the network call.
   const hits = useMemo(() => onlyBrand(rawHits, brand), [rawHits, brand]);
 
+  // Auto-browse: when user picks a brand chip with no query and no results,
+  // fire a search using the brand label as the query so they see that
+  // brand's catalog. Matches the Aura "tap brand → see items" mental model.
+  useEffect(() => {
+    if (!brand) return;
+    if (rawHits.length > 0) return;
+    if (query.trim()) return;
+    const browseQuery = BRAND_LABELS[brand] ?? brand;
+    setQuery(browseQuery);
+    (async () => {
+      setLoading(true);
+      setHasSearched(true);
+      try {
+        const r = await api.smartSearch({ query: browseQuery, lang: "en", limit: 24 });
+        setRawHits(onlyFood(r.hits));
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand]);
+
   async function runSearch() {
     if (!query.trim()) return;
 

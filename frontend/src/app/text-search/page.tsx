@@ -64,8 +64,11 @@ function TextSearchInner() {
     router.replace("/text-search");
   }
 
-  async function runSearch(brandOverride?: string | null) {
-    if (!query.trim()) return;
+  async function runSearch(brandOverride?: string | null, queryOverride?: string) {
+    // queryOverride lets BrandChips trigger a "browse this brand" search
+    // without waiting for the setQuery state update to propagate.
+    const effectiveQuery = queryOverride !== undefined ? queryOverride : query;
+    if (!effectiveQuery.trim()) return;
     setLoading(true);
     setError(null);
 
@@ -78,7 +81,7 @@ function TextSearchInner() {
     // Sync URL so it's shareable / re-runnable. lang is no longer persisted —
     // it's derived from query content at render time.
     const sp = new URLSearchParams();
-    sp.set("q", query);
+    sp.set("q", effectiveQuery);
     if (maxPrice) sp.set("max", maxPrice);
     if (effectiveBrand) sp.set("brand", effectiveBrand);
     router.replace(`/text-search?${sp.toString()}`);
@@ -97,7 +100,7 @@ function TextSearchInner() {
       // of Cohere kNN. We pin brand from the chip and price from the input
       // so user-set filters always win over LLM-inferred ones.
       const smart = await api.smartSearch({
-        query,
+        query: effectiveQuery,
         lang,
         limit: 18,
       });
@@ -121,7 +124,7 @@ function TextSearchInner() {
       // already known) but feed the cleaned query for better relevance.
       if (!isStage2 && mainBrand) {
         const others = await api.textSearch({
-          query: smart.intent.query_cleaned || query,
+          query: smart.intent.query_cleaned || effectiveQuery,
           lang,
           limit: 8,
           brand_filter: ["hm", "footlocker", "mothercare", "bath_body_works"].filter(
@@ -194,10 +197,22 @@ function TextSearchInner() {
             selected={brand}
             onChange={(b) => {
               setBrand(b);
-              // Pass the new brand value to runSearch directly so it doesn't
-              // read a stale `brand` from the previous closure. Without this,
-              // clicking "Foot Locker" filters by the previous brand value.
-              if (mainHits.length > 0) setTimeout(() => runSearch(b), 0);
+              // Three cases:
+              //  1. Has existing results → narrow current results to new brand
+              //  2. No results but query has text → fire current query w/ new brand
+              //  3. No results + no query + a brand was picked → BROWSE mode:
+              //     auto-fill query with brand name + fire search so the user
+              //     sees that brand's catalog. Matches Aura's "tap brand → see
+              //     items" mental model.
+              if (mainHits.length > 0) {
+                setTimeout(() => runSearch(b), 0);
+              } else if (query.trim()) {
+                setTimeout(() => runSearch(b), 0);
+              } else if (b) {
+                const browseQuery = BRAND_LABELS[b] ?? b;
+                setQuery(browseQuery);
+                setTimeout(() => runSearch(b, browseQuery), 0);
+              }
             }}
           />
         </div>

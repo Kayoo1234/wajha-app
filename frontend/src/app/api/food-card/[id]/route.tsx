@@ -36,6 +36,7 @@ const ITEMS: Record<string, CardSpec> = {
   "RC-EXTRA-SAUCE":     { emoji: "🥫", brand: "Cane's", title: "Extra Sauce",        bg: CANES },
   // Cane's drinks
   "RC-LEMONADE":        { emoji: "🍋", brand: "Cane's", title: "Lemonade",           bg: CANES },
+  // Iced sweet tea also reads as boba-cup-with-straw, not hot tea bowl
   "RC-SWEET-TEA":       { emoji: "🧋", brand: "Cane's", title: "Sweet Tea",          bg: CANES },
   "RC-WATER":           { emoji: "💧", brand: "Cane's", title: "Bottled Water",      bg: CANES },
 
@@ -49,12 +50,15 @@ const ITEMS: Record<string, CardSpec> = {
   "SB-ESPRESSO-DOPPIO":        { emoji: "☕", brand: "Starbucks", title: "Espresso Doppio",    bg: STARBUCKS },
   "SB-VANILLA-LATTE":          { emoji: "☕", brand: "Starbucks", title: "Vanilla Latte",      bg: STARBUCKS },
   "SB-WHITE-MOCHA":            { emoji: "☕", brand: "Starbucks", title: "White Mocha",        bg: STARBUCKS },
-  // Iced
-  "SB-ICED-LATTE":             { emoji: "🧊", brand: "Starbucks", title: "Iced Latte",         bg: STARBUCKS },
-  "SB-ICED-AMERICANO":         { emoji: "🧊", brand: "Starbucks", title: "Iced Americano",     bg: STARBUCKS },
-  "SB-COLD-BREW":              { emoji: "🧊", brand: "Starbucks", title: "Cold Brew",          bg: STARBUCKS },
-  "SB-NITRO-COLD-BREW":        { emoji: "🧊", brand: "Starbucks", title: "Nitro Cold Brew",    bg: STARBUCKS },
-  "SB-ICED-CARAMEL-MACCHIATO": { emoji: "🧊", brand: "Starbucks", title: "Iced Caramel Macchiato", bg: STARBUCKS },
+  // Iced — coffee stays coffee (☕) regardless of temperature. The word
+  // "Iced" in the title carries the temperature info. An ice cube alone
+  // doesn't read as "iced latte" — it just reads as ice. Cold brew gets
+  // 🥃 (tumbler) because it's typically served in a straight glass.
+  "SB-ICED-LATTE":             { emoji: "☕", brand: "Starbucks", title: "Iced Latte",         bg: STARBUCKS },
+  "SB-ICED-AMERICANO":         { emoji: "☕", brand: "Starbucks", title: "Iced Americano",     bg: STARBUCKS },
+  "SB-COLD-BREW":              { emoji: "🥃", brand: "Starbucks", title: "Cold Brew",          bg: STARBUCKS },
+  "SB-NITRO-COLD-BREW":        { emoji: "🥃", brand: "Starbucks", title: "Nitro Cold Brew",    bg: STARBUCKS },
+  "SB-ICED-CARAMEL-MACCHIATO": { emoji: "☕", brand: "Starbucks", title: "Iced Caramel Macchiato", bg: STARBUCKS },
   // Frappuccinos
   "SB-MOCHA-FRAPP":            { emoji: "🥤", brand: "Starbucks", title: "Mocha Frappuccino",  bg: STARBUCKS },
   "SB-CARAMEL-FRAPP":          { emoji: "🥤", brand: "Starbucks", title: "Caramel Frappuccino", bg: STARBUCKS },
@@ -67,7 +71,8 @@ const ITEMS: Record<string, CardSpec> = {
   // Tea
   "SB-CHAI-LATTE":             { emoji: "🍵", brand: "Starbucks", title: "Chai Latte",         bg: STARBUCKS },
   "SB-MATCHA-LATTE":           { emoji: "🍵", brand: "Starbucks", title: "Matcha Latte",       bg: STARBUCKS },
-  "SB-ICED-GREEN-TEA":         { emoji: "🍵", brand: "Starbucks", title: "Iced Green Tea",     bg: STARBUCKS },
+  // Iced green tea reads better as the boba-cup-with-straw than the hot-tea bowl
+  "SB-ICED-GREEN-TEA":         { emoji: "🧋", brand: "Starbucks", title: "Iced Green Tea",     bg: STARBUCKS },
   // Hot choc
   "SB-HOT-CHOCOLATE":          { emoji: "🍫", brand: "Starbucks", title: "Hot Chocolate",      bg: STARBUCKS },
   // Pastry / sandwich / sweet
