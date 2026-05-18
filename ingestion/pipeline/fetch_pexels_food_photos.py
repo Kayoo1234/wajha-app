@@ -128,6 +128,45 @@ ITEMS: dict[str, str] = {
     # PF Chang's — drinks
     "PF-JASMINE-TEA":            "jasmine green tea cup",
     "PF-LYCHEE-MOJITO":          "lychee cocktail mocktail",
+    # Cheesecake Factory — cheesecakes (the namesake)
+    "CCF-ORIGINAL-CHEESECAKE":      "plain new york cheesecake slice",
+    "CCF-STRAWBERRY-CHEESECAKE":    "strawberry cheesecake slice",
+    "CCF-OREO-CHEESECAKE":          "oreo chocolate cheesecake slice",
+    "CCF-REESES-CHEESECAKE":        "peanut butter chocolate cheesecake",
+    "CCF-TIRAMISU-CHEESECAKE":      "tiramisu dessert slice",
+    "CCF-SALTED-CARAMEL-CHEESECAKE": "salted caramel cheesecake slice",
+    "CCF-CARROT-CHEESECAKE":        "carrot cake slice frosting",
+    "CCF-GODIVA-CHEESECAKE":        "chocolate cheesecake decadent",
+    # Cheesecake Factory — burgers
+    "CCF-CLASSIC-BURGER":           "classic beef cheeseburger fries",
+    "CCF-BBQ-BACON-BURGER":         "bbq bacon cheeseburger",
+    "CCF-MUSHROOM-BURGER":          "mushroom swiss burger",
+    # Cheesecake Factory — pasta
+    "CCF-FETTUCCINI-ALFREDO":       "fettuccini alfredo creamy pasta",
+    "CCF-SHRIMP-SCAMPI-PASTA":      "shrimp scampi pasta lemon",
+    "CCF-CARBONARA":                "pasta carbonara bacon",
+    "CCF-CAJUN-JAMBALAYA":          "cajun pasta shrimp chicken",
+    # Cheesecake Factory — pizza
+    "CCF-MARGHERITA-PIZZA":         "margherita pizza basil",
+    "CCF-BBQ-CHICKEN-PIZZA":        "bbq chicken pizza",
+    # Cheesecake Factory — appetizers
+    "CCF-AVOCADO-EGGROLLS":         "avocado egg rolls appetizer",
+    "CCF-FRIED-MAC-CHEESE":         "fried mac and cheese balls",
+    "CCF-BUFFALO-WINGS":            "buffalo chicken wings spicy",
+    "CCF-SPINACH-CHEESE-DIP":       "spinach artichoke cheese dip",
+    # Cheesecake Factory — salads
+    "CCF-COBB-SALAD":               "cobb salad chicken bacon avocado",
+    "CCF-CHINESE-CHICKEN-SALAD":    "chinese chicken salad noodles",
+    "CCF-CAESAR-SALAD":             "caesar salad chicken croutons",
+    # Cheesecake Factory — mains
+    "CCF-SALMON":                   "grilled salmon fillet lemon",
+    "CCF-CHICKEN-MARSALA":          "chicken marsala mushroom sauce",
+    # Cheesecake Factory — sides
+    "CCF-SWEET-POTATO-FRIES":       "sweet potato fries crispy",
+    "CCF-MASHED-POTATOES":          "creamy mashed potatoes",
+    # Cheesecake Factory — drinks
+    "CCF-STRAWBERRY-LEMONADE":      "strawberry lemonade glass",
+    "CCF-ICED-TEA":                 "iced black tea glass",
 }
 
 PEXELS_SEARCH = "https://api.pexels.com/v1/search"

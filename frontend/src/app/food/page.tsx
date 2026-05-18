@@ -82,7 +82,9 @@ function detectBrandInQuery(q: string): string | null {
 // async /brands call resolves. Without this the chips spend the first
 // 1-2s of page load as "soon"-disabled stubs which looked broken in
 // Ali's mobile screenshot.
-const KNOWN_POPULATED = new Set(["raising_canes", "starbucks", "pf_changs"]);
+const KNOWN_POPULATED = new Set([
+  "raising_canes", "starbucks", "pf_changs", "cheesecake_factory",
+]);
 
 function BrandChipStrip() {
   const { brand, setBrand, brandCounts } = useBrandFilter();
