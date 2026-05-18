@@ -528,9 +528,14 @@ def is_low_signal(raw_query: str, intent: "Intent | None") -> bool:
     if len(q) < 2:
         return True
     if intent is None:
-        # Groq timed out / errored / got rate-limited: treat short queries
-        # as low-signal so we don't spray random kNN at a demo.
-        return len(q) <= 7
+        # Groq is unavailable (timeout / rate-limit / error). Without
+        # intent extraction we can't tell "shoes" from "asdfgh", so we
+        # fall through to plain Cohere kNN for any 2+ char query.
+        # Returning empty here would block legitimate short queries like
+        # "shoes" or "watch" whenever Groq is degraded — worse demo UX
+        # than the alternative (gibberish returns kNN garbage but that's
+        # an acceptable degradation when Groq is down).
+        return False
     has_signal = any([
         intent.category, intent.color, intent.brand,
         intent.gender, intent.audience,
