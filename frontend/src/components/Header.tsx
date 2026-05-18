@@ -111,6 +111,15 @@ export default function Header() {
           <NavLink href="/text-search">Search</NavLink>
           <NavLink href="/visual-search">Visual</NavLink>
           <NavLink href="/complete-the-look">Complete the Look</NavLink>
+          <span className="text-zinc-300">·</span>
+          <NavLink href="/food">
+            <span className="inline-flex items-center gap-1">
+              <span>Food</span>
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
+                new
+              </span>
+            </span>
+          </NavLink>
         </nav>
 
         <div className="flex items-center gap-3">

@@ -169,6 +169,33 @@ export const BRAND_FULL_NAMES: Record<string, string> = {
   cheesecake_factory: "The Cheesecake Factory Kuwait",
 };
 
+// Vertical → brand slugs. Used by the food page to client-side post-filter
+// /search/smart results to the food vertical without a backend change.
+export const FOOD_BRAND_SLUGS = [
+  "raising_canes",
+  "starbucks",
+  "pf_changs",
+  "cheesecake_factory",
+];
+export const FASHION_BRAND_SLUGS = [
+  "hm",
+  "footlocker",
+  "mothercare",
+  "bath_body_works",
+];
+
+// Curated craving moods for the Food tab. Each maps to a search query and
+// a UI accent. Chosen because they're (a) universal cross-cuisine, (b)
+// semantically distinct in Cohere's multilingual embedding space, and
+// (c) map to actual catalog items we know exist.
+export const CRAVING_MOODS = [
+  { key: "spicy",   label: "Spicy",    emoji: "🌶",  query: "spicy hot chili flavor", accent: "bg-red-100 text-red-700 ring-red-200" },
+  { key: "comfort", label: "Comfort",  emoji: "🍔",  query: "warm hearty comfort food", accent: "bg-amber-100 text-amber-700 ring-amber-200" },
+  { key: "light",   label: "Light",    emoji: "🥗",  query: "light fresh healthy",      accent: "bg-emerald-100 text-emerald-700 ring-emerald-200" },
+  { key: "sweet",   label: "Sweet",    emoji: "🍰",  query: "sweet dessert sugar",      accent: "bg-pink-100 text-pink-700 ring-pink-200" },
+  { key: "cold",    label: "Cold drink", emoji: "🥤", query: "iced cold drink refreshing", accent: "bg-sky-100 text-sky-700 ring-sky-200" },
+] as const;
+
 // Bucket labels for complete-the-look (matches backend bucket names)
 export const BUCKET_LABELS: Record<string, string> = {
   apparel: "Apparel",
