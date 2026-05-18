@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -15,9 +15,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aura • Discover — powered by Wajha",
+  title: "Wajha — Aura Discover",
   description:
-    "AI-powered shopping discovery across Alshaya's Kuwait brands — demo for Nida Unas",
+    "AI-powered shopping discovery across Alshaya's Kuwait brands — fashion + food, one search.",
+  // PWA / iOS Add-to-Home-Screen polish. Without appleWebApp, iOS opens
+  // the installed icon in Safari with full chrome — defeats the point of
+  // a home-screen install. With it, the app launches fullscreen with the
+  // status bar styled to match our purple header.
+  appleWebApp: {
+    capable: true,
+    title: "Wajha",
+    statusBarStyle: "default",
+  },
+  applicationName: "Wajha",
+  // Manifest is auto-served at /manifest.webmanifest from app/manifest.ts
+};
+
+export const viewport: Viewport = {
+  themeColor: "#7C3AED",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  // Don't disable user zoom — accessibility + Arabic-script readability
+  // both depend on it.
+  userScalable: true,
 };
 
 export default function RootLayout({
