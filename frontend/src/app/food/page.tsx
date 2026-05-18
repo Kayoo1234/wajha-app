@@ -471,6 +471,35 @@ function CravingMode() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Page shell
 // ─────────────────────────────────────────────────────────────────────────────
+const MODE_CARDS: Array<{
+  key: Mode; n: number; title: string; blurb: string; accent: string;
+}> = [
+  {
+    key: "search",
+    n: 1,
+    title: "Search food",
+    blurb:
+      "“chicken combo”, “iced latte”, “بانيني” — Cohere multilingual ranks across every Alshaya food brand.",
+    accent: "bg-violet-100 text-violet-800",
+  },
+  {
+    key: "build",
+    n: 2,
+    title: "Build a meal",
+    blurb:
+      "Pick a main → Wajha suggests a drink, a side, and something sweet across brands. Food-grammar Complete-the-Look.",
+    accent: "bg-rose-100 text-rose-800",
+  },
+  {
+    key: "craving",
+    n: 3,
+    title: "Craving",
+    blurb:
+      "Tap a mood: 🌶 Spicy · 🍔 Comfort · 🥗 Light · 🍰 Sweet · 🥤 Cold. The Talabat-killer beat — attribute-first.",
+    accent: "bg-emerald-100 text-emerald-800",
+  },
+];
+
 function FoodPageInner() {
   const [mode, setMode] = useState<Mode>("search");
   const [brand, setBrand] = useState<BrandFilter>(null);
@@ -488,69 +517,89 @@ function FoodPageInner() {
     return () => { alive = false; };
   }, []);
 
+  function pickMode(m: Mode) {
+    setMode(m);
+    // Scroll the mode UI into view (better mobile UX after a card tap)
+    requestAnimationFrame(() => {
+      const el = document.getElementById("food-mode-panel");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   return (
     <BrandFilterContext.Provider value={{ brand, setBrand, brandCounts }}>
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        {/* Hero */}
-        <section className="mb-8">
-          <div className="mb-2 inline-flex items-center gap-2">
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-              Food vertical
-            </span>
-            <span className="text-[11px] text-zinc-500">
-              Raising Cane&apos;s · Starbucks · P.F. Chang&apos;s · Cheesecake Factory
-            </span>
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        {/* Hero — matches the home page hero style */}
+        <section className="text-center">
+          <div className="mb-3 inline-block rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-emerald-700">
+            Food &amp; Beverage vertical
           </div>
-          <h1 className="text-3xl font-bold text-zinc-900 sm:text-4xl">
-            The food story Talabat can&apos;t tell.
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
+            Talabat asks <em>which restaurant</em>.
+            <br />
+            <span className="text-[var(--aura-primary)]">
+              Wajha asks what you actually want.
+            </span>
           </h1>
-          <p className="mt-3 max-w-3xl text-base text-zinc-600">
-            Talabat asks &ldquo;which restaurant?&rdquo; first. Wajha asks{" "}
-            <strong>&ldquo;what do you actually want?&rdquo;</strong> first — and
-            searches across every Alshaya food brand by attribute, not by brand
-            tile. Aura member price, points-at-checkout, and the employee
+          <p className="mx-auto mt-5 max-w-2xl text-base text-zinc-600">
+            Cross-brand food discovery across <strong>Raising Cane&apos;s</strong>,{" "}
+            <strong>Starbucks</strong>, and (soon) <strong>P.F. Chang&apos;s</strong> +{" "}
+            <strong>The Cheesecake Factory</strong> — searched by attribute, not by
+            brand tile. Aura member price, points-at-checkout, and the employee
             discount tier all apply at the moment of decision.
           </p>
         </section>
 
-        {/* Brand chip strip — shared filter across all 3 modes */}
-        <div className="mb-6">
+        {/* Brand selector (chunky-pill row, sits between hero and mode cards) */}
+        <div className="mt-10">
           <BrandChipStrip />
         </div>
 
-        {/* Mode tabs */}
-        <div className="mb-6 flex flex-wrap gap-2 border-b border-zinc-200">
-          <ModeTab active={mode === "search"}   onClick={() => setMode("search")}   emoji="🔎" label="Search" />
-          <ModeTab active={mode === "build"}    onClick={() => setMode("build")}    emoji="🍴" label="Build a meal" />
-          <ModeTab active={mode === "craving"}  onClick={() => setMode("craving")}  emoji="🌶" label="Craving" />
-        </div>
+        {/* Three big mode cards — same numbered-scenario pattern as home */}
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {MODE_CARDS.map((c) => {
+            const active = c.key === mode;
+            return (
+              <button
+                key={c.key}
+                onClick={() => pickMode(c.key)}
+                className={`group block rounded-2xl border bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                  active
+                    ? "border-[var(--aura-primary)] ring-2 ring-[var(--aura-primary)]/30"
+                    : "border-zinc-200"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${c.accent}`}
+                  >
+                    {c.n}
+                  </span>
+                  <span
+                    className={`text-sm transition-colors ${
+                      active ? "text-[var(--aura-primary)]" : "text-zinc-400 group-hover:text-[var(--aura-primary)]"
+                    }`}
+                  >
+                    {active ? "Active ↓" : "→"}
+                  </span>
+                </div>
+                <h2 className="mt-4 text-lg font-semibold text-zinc-900">
+                  {c.title}
+                </h2>
+                <p className="mt-2 text-sm text-zinc-600">{c.blurb}</p>
+              </button>
+            );
+          })}
+        </section>
 
-        {/* Active mode */}
-        {mode === "search"  && <SearchMode />}
-        {mode === "build"   && <BuildAMealMode />}
-        {mode === "craving" && <CravingMode />}
+        {/* Active mode panel — scrolled into view on card tap */}
+        <section id="food-mode-panel" className="mt-10 scroll-mt-20">
+          {mode === "search"  && <SearchMode />}
+          {mode === "build"   && <BuildAMealMode />}
+          {mode === "craving" && <CravingMode />}
+        </section>
       </div>
     </BrandFilterContext.Provider>
-  );
-}
-
-function ModeTab({
-  active, onClick, emoji, label,
-}: {
-  active: boolean; onClick: () => void; emoji: string; label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-        active
-          ? "border-[var(--aura-primary)] text-[var(--aura-primary)]"
-          : "border-transparent text-zinc-600 hover:text-zinc-900"
-      }`}
-    >
-      <span className="text-base">{emoji}</span>
-      {label}
-    </button>
   );
 }
 
