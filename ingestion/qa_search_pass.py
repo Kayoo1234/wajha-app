@@ -95,6 +95,10 @@ def main() -> None:
         t0 = time.time()
         resp = call_smart(query, lang)
         dt_ms = int((time.time() - t0) * 1000)
+        # Throttle against Groq's free-tier 30 RPM ceiling. Production never
+        # hits this because real users space queries naturally; this is only
+        # for the rapid-fire QA harness.
+        time.sleep(2.5)
 
         if "_error" in resp:
             out.append({

@@ -528,8 +528,9 @@ def is_low_signal(raw_query: str, intent: "Intent | None") -> bool:
     if len(q) < 2:
         return True
     if intent is None:
-        # Groq timed out / errored: only treat as low-signal if query is short.
-        return len(q) < 4
+        # Groq timed out / errored / got rate-limited: treat short queries
+        # as low-signal so we don't spray random kNN at a demo.
+        return len(q) <= 7
     has_signal = any([
         intent.category, intent.color, intent.brand,
         intent.gender, intent.audience,
