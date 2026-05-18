@@ -535,6 +535,19 @@ _CATEGORY_WORDS_REGEX = {
     "drink", "lemonade", "water", "fries", "wings", "rice", "salad",
     "dessert", "cookie", "muffin", "cake", "croissant",
     "pillow", "cushion", "blanket", "rug",
+    # Food moods + adjectives — bypass low-signal block so "spicy" /
+    # "comfort" / "light" / "sweet" / "savory" land in the pipeline as
+    # signal-bearing intent words, not gibberish. Each still triggers
+    # Cohere semantic search; we don't use them as hard category filters
+    # since they have no _CATEGORY_TO_PREFIX mapping (category_to_prefix
+    # returns None which is fine).
+    "spicy", "sweet", "savory", "salty", "comfort", "light", "fresh",
+    "healthy", "hot", "cold", "iced", "warm", "creamy", "crispy",
+    "grilled", "fried", "baked", "roasted",
+    "chicken", "beef", "shrimp", "salmon", "fish", "lamb", "pork",
+    "vegetarian", "vegan", "kids",
+    "asian", "italian", "american", "mexican", "indian",
+    "noodle", "noodles", "pizza", "pasta", "soup",
 }
 
 _PRICE_BETWEEN_RE = re.compile(
@@ -685,8 +698,12 @@ def is_low_signal(raw_query: str, intent: "Intent | None") -> bool:
     ])
     if has_signal:
         return False
-    # No structured intent. Short-ish query → almost certainly gibberish.
-    # 7 chars catches "asdfgh", "qwerty", "zxcvbn" but lets real words like
-    # "shirt" / "dress" through (they would have had intent.category set
-    # anyway by Groq; this branch only fires when Groq returned nothing).
-    return len(q) <= 7
+    # No structured intent. Only block VERY short queries (1-3 chars).
+    # Real food/fashion vocab is usually 4+ chars — spicy / pasta / burger /
+    # latte / chicken / sweet / comfort / light — and Cohere returns
+    # relevant items for those. With a 776-item catalog, the kNN top-10
+    # for "asdfgh" gibberish still looks plausible (random food/clothing),
+    # so the demo cost of letting "asdfgh" through is low; the cost of
+    # blocking "spicy" or "burger" is a visible empty-state on a real query.
+    # Better trade.
+    return len(q) <= 3
