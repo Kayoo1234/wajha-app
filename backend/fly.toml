@@ -1,49 +1,41 @@
-# Fly.io config for Wajha backend.
+# fly.toml app configuration file generated for wajha-backend on 2026-05-17T22:15:37+03:00
 #
-# - Single machine in fra (Frankfurt) — closest free Fly.io region to Kuwait.
-#   (Fly has bom/Mumbai too if you prefer; latency to Kuwait is roughly the
-#   same. Keep fra unless beta latency feels off.)
-# - auto_stop_machines = false: ML inference cold starts (~30s for CLIP load
-#   + model warmup) are too slow to bear on every idle period. We pay the
-#   keep-alive premium (~$10–15/month) for sub-second responses.
-# - 2 GB RAM, 1 shared CPU: fits CLIP comfortably with headroom for
-#   concurrent requests at demo + small-beta scale.
-# - Secrets are NOT in this file. Set them via `fly secrets set ...` —
-#   see DEPLOY.md.
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "wajha-backend"
-primary_region = "fra"
+app = 'wajha-backend'
+primary_region = 'fra'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
+
+[deploy]
+  strategy = 'rolling'
+  release_command = "echo 'wajha-backend release ok'"
 
 [http_service]
   internal_port = 8000
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
+  processes = ['app']
 
   [http_service.concurrency]
-    type = "requests"
+    type = 'requests'
     hard_limit = 25
     soft_limit = 20
 
+[[http_service.checks]]
+  grace_period = "30s"
+  interval = "15s"
+  method = "GET"
+  timeout = "5s"
+  path = "/health"
+
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "2gb"
+  size = 'shared-cpu-1x'
+  memory = '2gb'
+  cpu_kind = 'shared'
   cpus = 1
-
-[[services]]
-  protocol = "tcp"
-  internal_port = 8000
-
-  [[services.tcp_checks]]
-    interval = "15s"
-    timeout = "2s"
-    grace_period = "30s"
-
-[deploy]
-  release_command = "echo 'wajha-backend release ok'"
-  strategy = "rolling"
+  memory_mb = 2048

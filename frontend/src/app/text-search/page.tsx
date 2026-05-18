@@ -81,10 +81,12 @@ function TextSearchInner() {
     router.replace(`/text-search?${sp.toString()}`);
 
     try {
-      // Stage 1: filter by single brand (defaults to H&M if none selected)
-      // Stage 2: no brand filter — unified across brands
+      // Stage 1: filter by single brand if one is picked; null = "All Alshaya" pill = no brand filter.
+      // Stage 2: no brand filter — unified across brands.
+      // Important: do NOT fall back to "hm" on null. With the "All Alshaya" pill,
+      // null is a deliberate user choice ("show everything"), not an unset sentinel.
       const isStage2 = stage === 2;
-      const mainBrand = isStage2 ? null : effectiveBrand ?? "hm";
+      const mainBrand = isStage2 ? null : effectiveBrand;
       const max = maxPrice ? parseFloat(maxPrice) : null;
 
       // Smart-search path: Groq parses the query into structured filters
@@ -220,9 +222,10 @@ function TextSearchInner() {
       >
         {stage === 1 ? (
           <>
-            <strong>Stage 1 view.</strong> Search within {BRAND_LABELS[brand ?? "hm"]},
-            with cross-brand recommendations as a separate rail below. This is what
-            ships in pilot — recommendation cards link out to each brand&apos;s checkout.
+            <strong>Stage 1 view.</strong>{" "}
+            {brand
+              ? <>Search within {BRAND_LABELS[brand]}, with cross-brand recommendations as a separate rail below. This is what ships in pilot — recommendation cards link out to each brand&apos;s checkout.</>
+              : <>Search across all Alshaya brands. Recommendation cards link out to each brand&apos;s checkout.</>}
           </>
         ) : (
           <>
@@ -342,9 +345,9 @@ function TextSearchInner() {
       {/* Main results */}
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-bold text-zinc-900">
-          {stage === 2
+          {stage === 2 || !brand
             ? "Results across Alshaya"
-            : `Results from ${BRAND_LABELS[brand ?? "hm"]}`}
+            : `Results from ${BRAND_LABELS[brand]}`}
         </h2>
         {loading && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
