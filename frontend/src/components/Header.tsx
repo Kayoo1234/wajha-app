@@ -5,22 +5,36 @@ import { usePathname } from "next/navigation";
 import { useStage, useCart } from "@/lib/stores";
 import { useEffect, useState } from "react";
 
-function NavLink({
+// Two-vertical navigation. The nav has exactly TWO items — Fashion and
+// Food & Beverage — matching the home page's vertical-toggle mental
+// model. Each vertical's pill activates on any of its sub-routes so
+// the user always sees where they are in the hierarchy.
+const FASHION_PATHS = ["/", "/text-search", "/visual-search", "/complete-the-look"];
+const FOOD_PATHS = ["/food"];
+
+function isPathIn(pathname: string | null, paths: string[]): boolean {
+  if (!pathname) return false;
+  return paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+function NavPill({
   href,
+  matchPaths,
   children,
 }: {
   href: string;
+  matchPaths: string[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const active = pathname === href || pathname?.startsWith(href + "/");
+  const active = isPathIn(pathname, matchPaths);
   return (
     <Link
       href={href}
-      className={`text-sm font-medium transition-colors ${
+      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
         active
-          ? "text-[var(--aura-primary)]"
-          : "text-zinc-700 hover:text-[var(--aura-primary)]"
+          ? "bg-[var(--aura-primary)] text-white"
+          : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
       }`}
     >
       {children}
@@ -107,19 +121,18 @@ export default function Header() {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
-          <NavLink href="/text-search">Search</NavLink>
-          <NavLink href="/visual-search">Visual</NavLink>
-          <NavLink href="/complete-the-look">Complete the Look</NavLink>
-          <span className="text-zinc-300">·</span>
-          <NavLink href="/food">
-            <span className="inline-flex items-center gap-1">
-              <span>Food</span>
+        <nav className="hidden items-center gap-2 md:flex">
+          <NavPill href="/" matchPaths={FASHION_PATHS}>
+            Fashion
+          </NavPill>
+          <NavPill href="/food" matchPaths={FOOD_PATHS}>
+            <span className="inline-flex items-center gap-1.5">
+              <span>Food &amp; Beverage</span>
               <span className="rounded-full bg-emerald-100 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
                 new
               </span>
             </span>
-          </NavLink>
+          </NavPill>
         </nav>
 
         <div className="flex items-center gap-3">
