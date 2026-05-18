@@ -205,6 +205,18 @@ def search_smart(req: smart_search.SmartSearchRequest):
             demo_str = " · ".join(filter(None, [intent.audience, intent.gender]))
             notes.append(f"demographics filter ({demo_str}) matched 0 — keeping unfiltered set")
 
+    # 4c) Brand-level demographic exclusion. Mothercare is an exclusively
+    # kids / baby brand — when the query is for an adult, drop the entire
+    # brand. The title-token filter above misses Mothercare items whose
+    # titles don't contain literal "kids" / "baby" / "infant" (e.g. the
+    # weaning bowl set leaking into a "wedding gift" search for an adult).
+    if intent.audience == "adult":
+        before_brand = len(hits)
+        hits = [h for h in hits if h.brand_slug != "mothercare"]
+        dropped = before_brand - len(hits)
+        if dropped:
+            notes.append(f"audience=adult: dropped {dropped} kids-brand (Mothercare) items")
+
     # 5) Color filter (separate from title filter; both may apply)
     if intent.color:
         before_color = len(hits)
