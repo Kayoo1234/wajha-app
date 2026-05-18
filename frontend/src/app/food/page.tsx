@@ -439,7 +439,17 @@ function CravingMode() {
     setLoading(true);
     try {
       const r = await api.smartSearch({ query: mood.query, lang: "en", limit: 24 });
-      setRawHits(onlyFood(r.hits));
+      // Two-stage filter:
+      //   1. onlyFood — drop any fashion hits that leaked in
+      //   2. mood.excludes — drop items whose title contains a word that
+      //      contradicts the mood. Stops "Spicy" from returning Hot
+      //      Chocolate because Cohere matched "hot".
+      const inFood = onlyFood(r.hits);
+      const cleaned = inFood.filter((h) => {
+        const t = h.title.toLowerCase();
+        return !mood.excludes.some((w) => t.includes(w));
+      });
+      setRawHits(cleaned);
     } finally {
       setLoading(false);
     }

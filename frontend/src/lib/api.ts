@@ -184,16 +184,56 @@ export const FASHION_BRAND_SLUGS = [
   "bath_body_works",
 ];
 
-// Curated craving moods for the Food tab. Each maps to a search query and
-// a UI accent. Chosen because they're (a) universal cross-cuisine, (b)
-// semantically distinct in Cohere's multilingual embedding space, and
-// (c) map to actual catalog items we know exist.
+// Curated craving moods for the Food tab. Each maps to a search query, a
+// UI accent, and a TITLE-EXCLUDE list. The excludes are critical — Cohere
+// embeddings put "hot chocolate" near "spicy hot chili" because they share
+// the "hot" token, and without explicit exclude rules, Spicy results
+// surface sweet drinks. Same defensive pattern as the fashion title rules
+// (e.g. "shoes" excludes "hoodie" / "jersey").
 export const CRAVING_MOODS = [
-  { key: "spicy",   label: "Spicy",    emoji: "🌶",  query: "spicy hot chili flavor", accent: "bg-red-100 text-red-700 ring-red-200" },
-  { key: "comfort", label: "Comfort",  emoji: "🍔",  query: "warm hearty comfort food", accent: "bg-amber-100 text-amber-700 ring-amber-200" },
-  { key: "light",   label: "Light",    emoji: "🥗",  query: "light fresh healthy",      accent: "bg-emerald-100 text-emerald-700 ring-emerald-200" },
-  { key: "sweet",   label: "Sweet",    emoji: "🍰",  query: "sweet dessert sugar",      accent: "bg-pink-100 text-pink-700 ring-pink-200" },
-  { key: "cold",    label: "Cold drink", emoji: "🥤", query: "iced cold drink refreshing", accent: "bg-sky-100 text-sky-700 ring-sky-200" },
+  {
+    key: "spicy",
+    label: "Spicy",
+    emoji: "🌶",
+    // Query intentionally avoids "hot" (matched chocolate/caramel) and
+    // leans into "savory", "chicken", "chili" — items we actually have.
+    query: "spicy chili pepper savory chicken sauce",
+    excludes: ["chocolate", "caramel", "sweet", "vanilla", "cream", "cookie", "muffin", "cheesecake", "frappuccino", "lemonade", "tea", "macchiato"],
+    accent: "bg-red-100 text-red-700 ring-red-200",
+  },
+  {
+    key: "comfort",
+    label: "Comfort",
+    emoji: "🍔",
+    query: "warm hearty comfort filling meal",
+    excludes: ["water", "lemonade", "iced tea", "refresher"],
+    accent: "bg-amber-100 text-amber-700 ring-amber-200",
+  },
+  {
+    key: "light",
+    label: "Light",
+    emoji: "🥗",
+    query: "light fresh healthy small portion",
+    excludes: ["frappuccino", "brownie", "cheesecake", "fries", "tailgate", "100", "50", "25", "hot chocolate"],
+    accent: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+  },
+  {
+    key: "sweet",
+    label: "Sweet",
+    emoji: "🍰",
+    query: "sweet dessert sugar chocolate cake",
+    excludes: ["chicken", "sandwich", "panini", "fries", "coleslaw", "americano", "espresso"],
+    accent: "bg-pink-100 text-pink-700 ring-pink-200",
+  },
+  {
+    key: "cold",
+    label: "Cold drink",
+    emoji: "🥤",
+    // "Cold drink" — emphasize iced beverages. Exclude warm/hot and food.
+    query: "iced cold refreshing chilled drink beverage",
+    excludes: ["hot", "warm", "croissant", "sandwich", "panini", "fries", "coleslaw", "cookie", "muffin", "cheesecake", "combo", "tailgate", "finger", "toast"],
+    accent: "bg-sky-100 text-sky-700 ring-sky-200",
+  },
 ] as const;
 
 // Bucket labels for complete-the-look (matches backend bucket names)
