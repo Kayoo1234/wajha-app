@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, createContext, useContext } from "react";
 import {
   api,
   type SearchHit,
@@ -9,6 +9,25 @@ import {
   BRAND_LABELS,
 } from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Brand filter — shared across all 3 modes via context.
+//
+// Brands with 0 catalog items (PF Chang's, Cheesecake Factory) render
+// disabled. Selected brand state lives at the page level so a user can
+// pick a brand once and have it apply to Search, Build-a-meal AND
+// Craving — same shape as the fashion text-search experience.
+// ─────────────────────────────────────────────────────────────────────────────
+type BrandFilter = string | null;
+const BrandFilterContext = createContext<{
+  brand: BrandFilter;
+  setBrand: (b: BrandFilter) => void;
+  brandCounts: Record<string, number>;
+}>({ brand: null, setBrand: () => {}, brandCounts: {} });
+
+function useBrandFilter() {
+  return useContext(BrandFilterContext);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /food — the Food vertical landing.
@@ -27,20 +46,96 @@ type Mode = "search" | "build" | "craving";
 
 const FOOD_SET = new Set(FOOD_BRAND_SLUGS);
 const onlyFood = (hits: SearchHit[]) => hits.filter((h) => FOOD_SET.has(h.brand_slug));
+const onlyBrand = (hits: SearchHit[], brand: BrandFilter) =>
+  brand ? hits.filter((h) => h.brand_slug === brand) : hits;
+const onlyFoodAndBrand = (hits: SearchHit[], brand: BrandFilter) =>
+  onlyBrand(onlyFood(hits), brand);
 
 function detectLang(q: string): "en" | "ar" {
   return /[؀-ۿ]/.test(q) ? "ar" : "en";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Brand chip strip — sticky at the top of the page; drives the shared filter.
+// ─────────────────────────────────────────────────────────────────────────────
+function BrandChipStrip() {
+  const { brand, setBrand, brandCounts } = useBrandFilter();
+  // Order: chains with catalog first, then "coming soon" stubs
+  const chips: Array<{ slug: string; available: boolean }> = [
+    { slug: "raising_canes",      available: (brandCounts.raising_canes ?? 0) > 0 },
+    { slug: "starbucks",          available: (brandCounts.starbucks ?? 0) > 0 },
+    { slug: "pf_changs",          available: (brandCounts.pf_changs ?? 0) > 0 },
+    { slug: "cheesecake_factory", available: (brandCounts.cheesecake_factory ?? 0) > 0 },
+  ];
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">
+        Browse by brand
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setBrand(null)}
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            brand === null
+              ? "bg-zinc-900 text-white"
+              : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+          }`}
+        >
+          All Food
+        </button>
+        {chips.map((c) => {
+          const n = brandCounts[c.slug] ?? 0;
+          const label = BRAND_LABELS[c.slug] ?? c.slug;
+          const active = brand === c.slug;
+          if (!c.available) {
+            return (
+              <button
+                key={c.slug}
+                disabled
+                title="Menu arriving in the next sprint"
+                className="cursor-not-allowed rounded-full border border-dashed border-zinc-300 bg-zinc-50 px-4 py-1.5 text-sm font-medium text-zinc-400"
+              >
+                {label} <span className="ml-1 text-[10px]">· soon</span>
+              </button>
+            );
+          }
+          return (
+            <button
+              key={c.slug}
+              onClick={() => setBrand(active ? null : c.slug)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-[var(--aura-primary)] text-white"
+                  : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+              }`}
+            >
+              {label}
+              <span className={`ml-1.5 text-[10px] font-bold ${active ? "text-white/80" : "text-zinc-400"}`}>
+                {n}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Search mode
 // ─────────────────────────────────────────────────────────────────────────────
 function SearchMode() {
+  const { brand } = useBrandFilter();
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [rawHits, setRawHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const lang = detectLang(query);
+
+  // Re-apply the brand filter whenever the chip selection changes, without
+  // re-firing the network call.
+  const hits = useMemo(() => onlyBrand(rawHits, brand), [rawHits, brand]);
 
   async function runSearch() {
     if (!query.trim()) return;
@@ -48,7 +143,7 @@ function SearchMode() {
     setHasSearched(true);
     try {
       const r = await api.smartSearch({ query, lang, limit: 24 });
-      setHits(onlyFood(r.hits));
+      setRawHits(onlyFood(r.hits));
     } finally {
       setLoading(false);
     }
@@ -109,7 +204,8 @@ function SearchMode() {
 //      to food vertical and to a few hits each.
 // ─────────────────────────────────────────────────────────────────────────────
 function BuildAMealMode() {
-  const [mains, setMains] = useState<SearchHit[]>([]);
+  const { brand } = useBrandFilter();
+  const [rawMains, setRawMains] = useState<SearchHit[]>([]);
   const [anchor, setAnchor] = useState<SearchHit | null>(null);
   const [drinks, setDrinks] = useState<SearchHit[]>([]);
   const [sides, setSides] = useState<SearchHit[]>([]);
@@ -117,25 +213,33 @@ function BuildAMealMode() {
   const [loadingMains, setLoadingMains] = useState(true);
   const [loadingPairings, setLoadingPairings] = useState(false);
 
+  // Brand-filter mains live; pairings stay cross-brand even when a brand
+  // is picked for the main, because the user explicitly wants pairings
+  // across the food vertical.
+  const mains = useMemo(() => onlyBrand(rawMains, brand).slice(0, 6), [rawMains, brand]);
+
+  // Reset anchor when brand changes (current anchor may no longer match)
+  useEffect(() => {
+    if (anchor && brand && anchor.brand_slug !== brand) {
+      setAnchor(null);
+      setDrinks([]); setSides([]); setDesserts([]);
+    }
+  }, [brand, anchor]);
+
   // Load curated mains once
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        // Query the smart endpoint for entree-shaped items. Cohere semantic
-        // search reliably ranks combos, sandwiches and paninis above sides
-        // for this query phrasing.
         const r = await api.smartSearch({
           query: "chicken combo or sandwich or panini main",
           lang: "en",
           limit: 16,
         });
         if (!alive) return;
-        // Drop drinks / desserts / side-only items from the picker. Best-effort
-        // title filter: title shouldn't contain words that mark non-mains.
         const NON_MAIN = /(latte|frapp|tea|coffee|cookie|brownie|cheesecake|muffin|croissant|water|sauce|toast|lemonade)/i;
         const filtered = onlyFood(r.hits).filter((h) => !NON_MAIN.test(h.title));
-        setMains(filtered.slice(0, 6));
+        setRawMains(filtered);
       } finally {
         if (alive) setLoadingMains(false);
       }
@@ -279,14 +383,18 @@ function PairingColumn({
 // brands so a craving like "comfort" doesn't accidentally surface H&M hoodies.
 // ─────────────────────────────────────────────────────────────────────────────
 function CravingMode() {
+  const { brand } = useBrandFilter();
   const [active, setActive] = useState<string | null>(null);
-  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [rawHits, setRawHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
 
   const activeMood = useMemo(
     () => CRAVING_MOODS.find((m) => m.key === active),
     [active],
   );
+
+  // Re-apply brand filter on chip change without re-fetching
+  const hits = useMemo(() => onlyBrand(rawHits, brand), [rawHits, brand]);
 
   async function pickMood(key: string) {
     const mood = CRAVING_MOODS.find((m) => m.key === key);
@@ -295,7 +403,7 @@ function CravingMode() {
     setLoading(true);
     try {
       const r = await api.smartSearch({ query: mood.query, lang: "en", limit: 24 });
-      setHits(onlyFood(r.hits));
+      setRawHits(onlyFood(r.hits));
     } finally {
       setLoading(false);
     }
@@ -357,43 +465,64 @@ function CravingMode() {
 // ─────────────────────────────────────────────────────────────────────────────
 function FoodPageInner() {
   const [mode, setMode] = useState<Mode>("search");
+  const [brand, setBrand] = useState<BrandFilter>(null);
+  const [brandCounts, setBrandCounts] = useState<Record<string, number>>({});
+
+  // Load brand product counts once for the chip strip labels
+  useEffect(() => {
+    let alive = true;
+    api.brands().then((bs) => {
+      if (!alive) return;
+      const counts: Record<string, number> = {};
+      for (const b of bs) counts[b.slug] = b.product_count;
+      setBrandCounts(counts);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      {/* Hero */}
-      <section className="mb-8">
-        <div className="mb-2 inline-flex items-center gap-2">
-          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-            Food vertical
-          </span>
-          <span className="text-[11px] text-zinc-500">
-            Raising Cane&apos;s · Starbucks · P.F. Chang&apos;s · Cheesecake Factory
-          </span>
+    <BrandFilterContext.Provider value={{ brand, setBrand, brandCounts }}>
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        {/* Hero */}
+        <section className="mb-8">
+          <div className="mb-2 inline-flex items-center gap-2">
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+              Food vertical
+            </span>
+            <span className="text-[11px] text-zinc-500">
+              Raising Cane&apos;s · Starbucks · P.F. Chang&apos;s · Cheesecake Factory
+            </span>
+          </div>
+          <h1 className="text-3xl font-bold text-zinc-900 sm:text-4xl">
+            The food story Talabat can&apos;t tell.
+          </h1>
+          <p className="mt-3 max-w-3xl text-base text-zinc-600">
+            Talabat asks &ldquo;which restaurant?&rdquo; first. Wajha asks{" "}
+            <strong>&ldquo;what do you actually want?&rdquo;</strong> first — and
+            searches across every Alshaya food brand by attribute, not by brand
+            tile. Aura member price, points-at-checkout, and the employee
+            discount tier all apply at the moment of decision.
+          </p>
+        </section>
+
+        {/* Brand chip strip — shared filter across all 3 modes */}
+        <div className="mb-6">
+          <BrandChipStrip />
         </div>
-        <h1 className="text-3xl font-bold text-zinc-900 sm:text-4xl">
-          The food story Talabat can&apos;t tell.
-        </h1>
-        <p className="mt-3 max-w-3xl text-base text-zinc-600">
-          Talabat asks &ldquo;which restaurant?&rdquo; first. Wajha asks{" "}
-          <strong>&ldquo;what do you actually want?&rdquo;</strong> first — and
-          searches across every Alshaya food brand by attribute, not by brand
-          tile. Aura member price, points-at-checkout, and the employee discount
-          tier all apply at the moment of decision.
-        </p>
-      </section>
 
-      {/* Mode tabs */}
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-zinc-200">
-        <ModeTab active={mode === "search"}   onClick={() => setMode("search")}   emoji="🔎" label="Search" />
-        <ModeTab active={mode === "build"}    onClick={() => setMode("build")}    emoji="🍴" label="Build a meal" />
-        <ModeTab active={mode === "craving"}  onClick={() => setMode("craving")}  emoji="🌶" label="Craving" />
+        {/* Mode tabs */}
+        <div className="mb-6 flex flex-wrap gap-2 border-b border-zinc-200">
+          <ModeTab active={mode === "search"}   onClick={() => setMode("search")}   emoji="🔎" label="Search" />
+          <ModeTab active={mode === "build"}    onClick={() => setMode("build")}    emoji="🍴" label="Build a meal" />
+          <ModeTab active={mode === "craving"}  onClick={() => setMode("craving")}  emoji="🌶" label="Craving" />
+        </div>
+
+        {/* Active mode */}
+        {mode === "search"  && <SearchMode />}
+        {mode === "build"   && <BuildAMealMode />}
+        {mode === "craving" && <CravingMode />}
       </div>
-
-      {/* Active mode */}
-      {mode === "search"  && <SearchMode />}
-      {mode === "build"   && <BuildAMealMode />}
-      {mode === "craving" && <CravingMode />}
-    </div>
+    </BrandFilterContext.Provider>
   );
 }
 
