@@ -182,6 +182,12 @@ function VisualSearchInner() {
               onChange={onFileChange}
               className="mt-2 block text-sm"
             />
+            <p className="mt-2 text-[11px] text-zinc-500">
+              On iPhone the picker opens with <strong>Take Photo · Photo
+              Library · Browse</strong>. Images are processed transiently for
+              catalog matching only — <strong>not stored, not shared, not used
+              for training.</strong>
+            </p>
           </div>
         </section>
       )}
