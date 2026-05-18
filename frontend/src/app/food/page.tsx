@@ -55,6 +55,26 @@ function detectLang(q: string): "en" | "ar" {
   return /[؀-ۿ]/.test(q) ? "ar" : "en";
 }
 
+// If the typed query mentions a brand name, return that brand's slug so
+// SearchMode can auto-switch the chip filter. Otherwise null. This stops
+// the case Ali flagged: typing "raising cane's" while the Starbucks chip
+// is active silently returns Starbucks items because the post-filter
+// wins. Now the chip flips visibly to match what the user typed.
+const BRAND_ALIASES: Array<[RegExp, string]> = [
+  [/raising\s*canes?|\bcanes?\b|\bcane[''']s\b/i, "raising_canes"],
+  [/starbucks/i,                                  "starbucks"],
+  [/p\.?\s*f\.?\s*chang|chang[''']?s/i,           "pf_changs"],
+  [/cheesecake\s*factory|cheesecake/i,            "cheesecake_factory"],
+];
+
+function detectBrandInQuery(q: string): string | null {
+  if (!q) return null;
+  for (const [re, slug] of BRAND_ALIASES) {
+    if (re.test(q)) return slug;
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Brand chip strip — sticky at the top of the page; drives the shared filter.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,7 +154,7 @@ function BrandChipStrip() {
 // Search mode
 // ─────────────────────────────────────────────────────────────────────────────
 function SearchMode() {
-  const { brand } = useBrandFilter();
+  const { brand, setBrand } = useBrandFilter();
   const [query, setQuery] = useState("");
   const [rawHits, setRawHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -147,6 +167,14 @@ function SearchMode() {
 
   async function runSearch() {
     if (!query.trim()) return;
+
+    // If the query mentions a brand name, the user almost certainly wants
+    // that brand. Auto-switch the chip BEFORE rendering so the post-filter
+    // matches their typed intent — no more "I typed Cane's and got
+    // Starbucks because the chip was stale".
+    const detected = detectBrandInQuery(query);
+    if (detected && detected !== brand) setBrand(detected);
+
     setLoading(true);
     setHasSearched(true);
     try {
