@@ -154,7 +154,11 @@ def search_smart(req: smart_search.SmartSearchRequest):
 
     # 3) Over-fetch: ask the RPC for more than we'll return, so post-filters
     # (title keyword, color) have headroom before we trim to req.limit.
-    over_fetch = max(req.limit * 3, 50)
+    # Floor bumped 50 -> 100 because Cohere kNN can rank correctly-tagged
+    # items 50+ slots back when older embeddings haven't been refreshed
+    # post-color-backfill. 100 candidates ensures the color hard-filter
+    # actually finds the matching items.
+    over_fetch = max(req.limit * 5, 100)
     text_req = __import__("schemas").TextSearchRequest(
         query=intent.query_cleaned or req.query,
         lang=req.lang,
