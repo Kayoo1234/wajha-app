@@ -89,6 +89,45 @@ ITEMS: dict[str, str] = {
     "SB-BLUEBERRY-MUFFIN":       "blueberry muffin bakery",
     "SB-CHOC-CHIP-COOKIE":       "chocolate chip cookie",
     "SB-CHEESECAKE":             "new york cheesecake slice",
+    # PF Chang's — appetizers
+    "PF-CHICKEN-LETTUCE-WRAPS":  "chicken lettuce wraps asian",
+    "PF-CRAB-WONTONS":           "crab wonton fried appetizer",
+    "PF-DYNAMITE-SHRIMP":        "crispy fried shrimp asian",
+    "PF-CALAMARI":               "fried calamari golden",
+    # PF Chang's — soup
+    "PF-EGG-DROP-SOUP":          "egg drop soup chinese",
+    "PF-HOT-SOUR-SOUP":          "hot sour soup chinese",
+    # PF Chang's — chicken mains
+    "PF-CHANGS-SPICY-CHICKEN":   "spicy chinese chicken chili",
+    "PF-KUNG-PAO-CHICKEN":       "kung pao chicken peanuts",
+    "PF-ORANGE-PEEL-CHICKEN":    "orange chicken sauce",
+    "PF-CRISPY-HONEY-CHICKEN":   "crispy honey chicken",
+    "PF-SWEET-SOUR-CHICKEN":     "sweet sour chicken pineapple",
+    "PF-GINGER-CHICKEN-BROCCOLI": "chicken broccoli stir fry",
+    # PF Chang's — beef
+    "PF-MONGOLIAN-BEEF":         "mongolian beef stir fry",
+    "PF-PEPPER-STEAK":           "pepper steak wok asian",
+    "PF-BEEF-SICHUAN":           "sichuan beef crispy",
+    # PF Chang's — seafood
+    "PF-SHRIMP-SAUCE":           "shrimp asian sauce",
+    # PF Chang's — noodles
+    "PF-PAD-THAI":               "pad thai noodles",
+    "PF-SINGAPORE-NOODLES":      "singapore curry noodles",
+    "PF-LO-MEIN-CHICKEN":        "chicken lo mein noodles",
+    # PF Chang's — rice
+    "PF-FRIED-RICE-COMBO":       "combination fried rice",
+    "PF-FRIED-RICE-CHICKEN":     "chicken fried rice",
+    # PF Chang's — salad / side / vegetarian
+    "PF-ASIAN-CAESAR":           "asian caesar salad",
+    "PF-CRISPY-GREEN-BEANS":     "crispy green beans tempura",
+    "PF-SICHUAN-ASPARAGUS":      "sichuan asparagus stir fry",
+    "PF-COCONUT-CURRY":          "coconut curry vegetables tofu",
+    # PF Chang's — dessert
+    "PF-BANANA-SPRING-ROLLS":    "banana spring rolls dessert",
+    "PF-GREAT-WALL-CHOCOLATE":   "chocolate layer cake slice",
+    # PF Chang's — drinks
+    "PF-JASMINE-TEA":            "jasmine green tea cup",
+    "PF-LYCHEE-MOJITO":          "lychee cocktail mocktail",
 }
 
 PEXELS_SEARCH = "https://api.pexels.com/v1/search"
@@ -130,16 +169,36 @@ def main() -> None:
             "    PEXELS_API_KEY=<your-key>"
         )
 
+    # Optional CLI filter: ` --prefix PF-` only processes external_ids
+    # matching the prefix. Stops the script from re-touching already-
+    # approved photos for other brands when adding a new brand.
+    import sys
+    prefix_filter: str | None = None
+    if "--prefix" in sys.argv:
+        i = sys.argv.index("--prefix")
+        if i + 1 < len(sys.argv):
+            prefix_filter = sys.argv[i + 1]
+            print(f"  filter: external_id starting with '{prefix_filter}'")
+
     sb = create_client(
         os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     )
 
+    items_to_process = (
+        {k: v for k, v in ITEMS.items() if k.startswith(prefix_filter)}
+        if prefix_filter
+        else ITEMS
+    )
+    if not items_to_process:
+        print(f"  no items match prefix '{prefix_filter}'")
+        return
+
     results: list[tuple[str, str | None]] = []
-    for i, (external_id, query) in enumerate(ITEMS.items(), 1):
+    for i, (external_id, query) in enumerate(items_to_process.items(), 1):
         url = fetch_one(api_key, query)
         results.append((external_id, url))
         marker = "[OK]" if url else "[--]"
-        print(f"  [{i:>2}/{len(ITEMS)}] {marker} {external_id}  ({query})")
+        print(f"  [{i:>2}/{len(items_to_process)}] {marker} {external_id}  ({query})")
         # Be polite to Pexels — 200 req/hr free tier; spacing keeps headroom.
         time.sleep(0.3)
 
