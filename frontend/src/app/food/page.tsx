@@ -199,11 +199,32 @@ function SearchMode() {
     const detected = detectBrandInQuery(query);
     if (detected && detected !== brand) setBrand(detected);
 
+    // If the query is a known mood word ("comfort" / "light" / "spicy" /
+    // "sweet" / "cold"), transparently use the curated Craving-mode query
+    // instead of the raw word. Cohere semantic-matches "comfort" against
+    // BBW "Hello Happiness" and Mothercare "Comfort Fit" cups more strongly
+    // than against food items, so the bare word returns nothing food-ish.
+    // The mood-anchored query ("comfort burger mac cheese pasta alfredo
+    // mashed potato hearty") lands on food consistently.
+    const q = query.trim().toLowerCase();
+    const moodMatch = CRAVING_MOODS.find(
+      (m) => m.key === q || m.label.toLowerCase() === q,
+    );
+    const effectiveQuery = moodMatch ? moodMatch.query : query;
+    const moodExcludes = moodMatch?.excludes ?? [];
+
     setLoading(true);
     setHasSearched(true);
     try {
-      const r = await api.smartSearch({ query, lang, limit: 24 });
-      setRawHits(onlyFood(r.hits));
+      const r = await api.smartSearch({ query: effectiveQuery, lang, limit: 24 });
+      let filtered = onlyFood(r.hits);
+      if (moodExcludes.length > 0) {
+        filtered = filtered.filter((h) => {
+          const t = h.title.toLowerCase();
+          return !moodExcludes.some((w) => t.includes(w));
+        });
+      }
+      setRawHits(filtered);
     } finally {
       setLoading(false);
     }
