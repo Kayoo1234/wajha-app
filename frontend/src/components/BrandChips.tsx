@@ -2,7 +2,17 @@
 
 import { BRAND_LABELS } from "@/lib/api";
 
-const BRAND_ORDER = ["hm", "footlocker", "mothercare", "bath_body_works"];
+// Order matters — left-to-right is the visual story we want users to see.
+// Fashion brands first (the original 4), then food brands as they get
+// catalog data. The two-tab Fashion/Food home (task #18) will split these
+// more cleanly; until then this is the unified chip strip.
+const BRAND_ORDER = [
+  "hm",
+  "footlocker",
+  "mothercare",
+  "bath_body_works",
+  "raising_canes",
+];
 
 export default function BrandChips({
   selected,

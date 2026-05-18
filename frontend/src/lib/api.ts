@@ -152,6 +152,10 @@ export const BRAND_LABELS: Record<string, string> = {
   bath_body_works: "BBW",
   footlocker: "Foot Locker",
   mothercare: "Mothercare",
+  raising_canes: "Raising Cane's",
+  starbucks: "Starbucks",
+  pf_changs: "P.F. Chang's",
+  cheesecake_factory: "Cheesecake Factory",
 };
 
 export const BRAND_FULL_NAMES: Record<string, string> = {
@@ -159,6 +163,10 @@ export const BRAND_FULL_NAMES: Record<string, string> = {
   bath_body_works: "Bath & Body Works Kuwait",
   footlocker: "Foot Locker Kuwait",
   mothercare: "Mothercare Kuwait",
+  raising_canes: "Raising Cane's Kuwait",
+  starbucks: "Starbucks Kuwait",
+  pf_changs: "P.F. Chang's Kuwait",
+  cheesecake_factory: "The Cheesecake Factory Kuwait",
 };
 
 // Bucket labels for complete-the-look (matches backend bucket names)

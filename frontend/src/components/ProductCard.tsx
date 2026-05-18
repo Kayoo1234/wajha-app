@@ -9,6 +9,11 @@ const BRAND_COLORS: Record<string, string> = {
   bath_body_works: "bg-pink-100 text-pink-800",
   footlocker: "bg-zinc-900 text-zinc-50",
   mothercare: "bg-sky-100 text-sky-800",
+  // F&B brands — colors echo each brand's marketing palette.
+  raising_canes: "bg-red-600 text-white",
+  starbucks: "bg-emerald-700 text-white",
+  pf_changs: "bg-amber-900 text-amber-50",
+  cheesecake_factory: "bg-stone-700 text-stone-50",
 };
 
 type Hit = Product | SearchHit;
