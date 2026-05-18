@@ -88,10 +88,31 @@ def search_smart(req: smart_search.SmartSearchRequest):
     """
     notes: list[str] = []
 
+    # 0) Reject empty / single-char queries up front. Avoids the 500 we used
+    # to throw when Cohere was called with an empty string, and stops a
+    # single-char "a" from returning the whole catalog.
+    if len((req.query or "").strip()) < 2:
+        return smart_search.SmartSearchResponse(
+            intent=smart_search.Intent(query_cleaned="", intent="browse"),
+            hits=[],
+            total=0,
+            notes=["Query too short — try at least 2 characters, e.g. \"white t-shirt\" or \"فستان أحمر\"."],
+        )
+
     # 1) Parse intent (cache + timeout)
     intent, intent_note = smart_search.extract_intent_resilient(req.query, req.lang, timeout_ms=3000)
     if intent_note:
         notes.append(intent_note)
+
+    # 1b) Low-signal query (no structured intent AND short raw text). Return
+    # empty + suggestion rather than random kNN hits. Demo discipline.
+    if smart_search.is_low_signal(req.query, intent):
+        return smart_search.SmartSearchResponse(
+            intent=intent or smart_search.Intent(query_cleaned=req.query.strip(), intent="browse"),
+            hits=[],
+            total=0,
+            notes=notes + ["We didn't catch a clear search intent. Try a category or color, e.g. \"black t-shirt\" or \"summer dress\"."],
+        )
 
     if intent is None:
         # Groq timed out / errored — fall back to plain text search
@@ -178,10 +199,27 @@ def search_smart(req: smart_search.SmartSearchRequest):
             hits = color_filtered
             notes.append(f"color filter: {intent.color} ({len(color_filtered)} of {before_color} matched)")
         else:
+            # Be specific about which constraint dropped the result count to zero.
             cat_phrase = intent.category or "items"
+            price_phrase = ""
+            if intent.max_price_kwd is not None:
+                price_phrase = f" under {intent.max_price_kwd:g} KWD"
+            elif intent.min_price_kwd is not None:
+                price_phrase = f" over {intent.min_price_kwd:g} KWD"
             notes.append(
-                f"No {intent.color} {cat_phrase} in stock right now — showing closest matches in similar styles."
+                f"No {intent.color} {cat_phrase}{price_phrase} matched — relaxing color and showing closest {cat_phrase}{price_phrase}."
             )
+
+    # 5b) Modesty filter — drops titles containing mini/crop/strappy/halter
+    # when the user signalled modest intent.
+    if intent.modest:
+        before_modest = len(hits)
+        modest_filtered = [h for h in hits if smart_search.title_matches_modesty(h.title, True)]
+        if modest_filtered:
+            hits = modest_filtered
+            notes.append(f"modesty filter: {len(modest_filtered)} of {before_modest} kept")
+        else:
+            notes.append("modesty filter matched 0 — keeping unfiltered set")
 
     # 6) Deal-word sort: ascending by price when the user signals price preference
     if smart_search.is_deal_query(req.query, intent.intent):

@@ -51,6 +51,10 @@ class Intent(BaseModel):
     intent: Literal[
         "specific_search", "browse", "discounted", "visual_similarity"
     ] = "specific_search"
+    # Modesty signal — set when the user asks for "modest" / "covered" / "long
+    # sleeve" / "maxi" / Arabic "محتشم". When true, the endpoint drops titles
+    # containing mini/crop/strappy/halterneck/bandeau/etc.
+    modest: bool | None = None
 
 
 class SmartSearchRequest(BaseModel):
@@ -87,7 +91,8 @@ Return ONLY compact JSON with these keys (use null when unknown):
   "audience": "<adult|kids|baby, or null>",
   "max_price_kwd": <number or null>,
   "min_price_kwd": <number or null>,
-  "intent": "<specific_search|browse|discounted|visual_similarity>"
+  "intent": "<specific_search|browse|discounted|visual_similarity>",
+  "modest": <true | null>
 }
 
 Rules:
@@ -105,6 +110,20 @@ GENDER / AUDIENCE EXTRACTION (important — controls the catalog subset):
 - "baby", "newborn", "infant", "toddler", Arabic "رضيع", "حديث الولادة" -> audience=baby.
 - Strong category signals: "dress" alone -> gender=women audience=adult (women's catalog); "blouse"/"skirt" -> gender=women adult; "polo"/"jersey" without modifier -> gender unset.
 - If user does not specify and there's no strong category signal, leave both fields null. Do NOT guess.
+
+OCCASION → AUDIENCE inference (gift-giving and event language signals an adult shopper):
+- "wedding", "anniversary", "engagement", "graduation", "date night", "formal event", "evening event" -> audience=adult.
+- "birthday party" alone is ambiguous — do NOT infer audience from "birthday" alone.
+
+RELATIONAL → GENDER / AUDIENCE inference (the recipient drives the catalog):
+- "my wife", "for my wife", "for her", "anniversary gift for her", "gift for mom", "for my girlfriend", "my mother" -> gender=women, audience=adult.
+- "my husband", "for my husband", "for him", "for my boyfriend", "gift for dad", "my father" -> gender=men, audience=adult.
+- "my daughter", "for my niece" -> audience=kids, gender=women.
+- "my son", "for my nephew" -> audience=kids, gender=men.
+- "my baby", "for the baby", "new-mom gift", "baby shower" -> audience=baby.
+
+MODESTY signal (set the optional "modest" field to true when present, else omit/null):
+- "modest", "covered", "long sleeve", "long-sleeve", "longer hem", "maxi" (dress/skirt), "abaya-style", Arabic "محتشم", "محتشمة" -> set "modest": true.
 
 Be conservative — only fill a field if you're confident."""
 
@@ -133,6 +152,13 @@ def extract_intent(raw_query: str) -> Intent:
         data["gender"] = None
     if data.get("audience") not in (None, "adult", "kids", "baby"):
         data["audience"] = None
+    # Modest must be bool or None — coerce stray strings
+    if data.get("modest") in ("false", "False", False, 0, ""):
+        data["modest"] = None
+    elif data.get("modest") in ("true", "True", True, 1):
+        data["modest"] = True
+    else:
+        data["modest"] = None
     return Intent(**data)
 
 
@@ -325,7 +351,8 @@ _CATEGORY_TITLE_RULES: dict[str, dict[str, list[str]]] = {
     "t-shirt":   {"requires_any": ["t-shirt", "tee"]},
     "tshirt":    {"requires_any": ["t-shirt", "tee"]},
     "tee":       {"requires_any": ["t-shirt", "tee"]},
-    "shirt":     {"requires_any": ["shirt"], "excludes": ["t-shirt"]},
+    # "shirt" must NOT match "shirt dress" — shirt-dresses are dresses.
+    "shirt":     {"requires_any": ["shirt"], "excludes": ["t-shirt", "tee", "dress"]},
     "dress":     {"requires_any": ["dress"]},
     "candle":    {"requires_any": ["candle"]},
     "scarf":     {"requires_any": ["scarf"]},
@@ -339,14 +366,39 @@ _CATEGORY_TITLE_RULES: dict[str, dict[str, list[str]]] = {
     "short":     {"requires_any": ["shorts", "boxer", "trunk"], "excludes": ["dress"]},
     "top":       {"requires_any": ["top", "blouse", "vest"], "excludes": ["t-shirt"]},
     "blouse":    {"requires_any": ["blouse"]},
-    "shoe":      {"requires_any": ["shoe", "sneaker", "boot", "loafer", "trainer", "sandal", "slipper", "force", "jordan", "nike", "adidas", "puma"]},
-    "shoes":     {"requires_any": ["shoe", "sneaker", "boot", "loafer", "trainer", "sandal", "slipper", "force", "jordan", "nike", "adidas", "puma"]},
-    "sneaker":   {"requires_any": ["shoe", "sneaker", "trainer", "force", "jordan", "nike", "adidas", "puma"]},
-    "trainers":  {"requires_any": ["shoe", "sneaker", "trainer", "force", "jordan", "nike", "adidas", "puma"]},
+    # Footwear rules: removed brand names from requires_any (they false-match
+    # Jordan hoodies, Nike jerseys, adidas pants, etc.). Excludes catch the
+    # apparel items that share a brand prefix with actual shoes.
+    "shoe":      {
+        "requires_any": ["shoe", "sneaker", "boot", "loafer", "trainer", "sandal", "slipper", "slide"],
+        "excludes":     ["hoodie", "jersey", "pants", "shirt", "tee", "shorts", "jacket", "blouse", "skirt", "set", "dress", "vest", "scarf", "cap", "hat", "sock"],
+    },
+    "shoes":     {
+        "requires_any": ["shoe", "sneaker", "boot", "loafer", "trainer", "sandal", "slipper", "slide"],
+        "excludes":     ["hoodie", "jersey", "pants", "shirt", "tee", "shorts", "jacket", "blouse", "skirt", "set", "dress", "vest", "scarf", "cap", "hat", "sock"],
+    },
+    "sneaker":   {
+        "requires_any": ["shoe", "sneaker", "trainer", "slide"],
+        "excludes":     ["hoodie", "jersey", "pants", "shirt", "tee", "shorts", "jacket", "blouse", "skirt", "set", "vest", "scarf", "cap", "hat", "sock"],
+    },
+    "trainers":  {
+        "requires_any": ["shoe", "sneaker", "trainer", "slide"],
+        "excludes":     ["hoodie", "jersey", "pants", "shirt", "tee", "shorts", "jacket", "blouse", "skirt", "set", "vest", "scarf", "cap", "hat", "sock"],
+    },
+    # "bag" must match actual bags, not storage baskets or vest tops.
+    "bag":       {
+        "requires_any": ["bag", "tote", "backpack", "handbag", "satchel", "purse", "rucksack", "clutch"],
+        "excludes":     ["basket", "vest", "shirt", "dress", "blanket", "pillow", "cushion", "blouse", "skirt", "set"],
+    },
+    "tote":      {"requires_any": ["bag", "tote", "handbag", "satchel"]},
+    "handbag":   {"requires_any": ["bag", "handbag", "tote"]},
+    "backpack":  {"requires_any": ["bag", "backpack", "rucksack"]},
+    # Watches not in catalog yet — keep rule so a future scrape populates cleanly.
+    "watch":     {"requires_any": ["watch", "smartwatch"], "excludes": ["strap", "band", "box", "case"]},
     "lotion":    {"requires_any": ["lotion", "cream"]},
     "soap":      {"requires_any": ["soap"]},
-    "perfume":   {"requires_any": ["perfume", "cologne", "spray", "mist", "fragrance"]},
-    "fragrance": {"requires_any": ["perfume", "cologne", "spray", "mist", "fragrance"]},
+    "perfume":   {"requires_any": ["perfume", "cologne", "eau de", "spray", "mist", "fragrance"]},
+    "fragrance": {"requires_any": ["perfume", "cologne", "eau de", "spray", "mist", "fragrance"]},
     "body lotion": {"requires_any": ["lotion", "cream"]},
     "body cream":  {"requires_any": ["lotion", "cream"]},
 }
@@ -427,3 +479,63 @@ def is_deal_query(raw_query: str, intent_value: str) -> bool:
         return True
     q = raw_query.lower()
     return any(w in q for w in _DEAL_WORDS)
+
+
+# ---------------------------------------------------------------------------
+# Modesty filter — drops titles containing tokens that contradict "modest"
+# intent. Activated only when Intent.modest == True.
+# ---------------------------------------------------------------------------
+_MODESTY_EXCLUDE_TITLE_TOKENS = [
+    "mini",        # mini dress / mini skirt
+    "crop",        # crop top
+    "strappy",     # strappy dress
+    "halterneck", "halter",
+    "plunge", "plunging",
+    "low-cut", "low cut",
+    "bandeau", "tube",
+    "off-shoulder", "off shoulder",
+    "bralette", "bra",
+    "bikini", "thong",
+    "sheer",
+    "backless", "open back",
+]
+
+
+def title_matches_modesty(title: str | None, modest: bool | None) -> bool:
+    """True if a title doesn't contradict modesty intent.
+
+    Returns True (don't filter) when modest is falsy — modesty is opt-in.
+    When modest=True, rejects titles containing mini/crop/strappy/halter
+    /bandeau/etc."""
+    if not modest or not title:
+        return True
+    t = title.lower()
+    return not any(tok in t for tok in _MODESTY_EXCLUDE_TITLE_TOKENS)
+
+
+# ---------------------------------------------------------------------------
+# Low-signal-query detection — when the parsed Intent has no structured
+# signal AND the raw query is short/gibberish, we'd otherwise return random
+# kNN matches that look like demo failure. Better to return empty + suggest.
+# ---------------------------------------------------------------------------
+def is_low_signal(raw_query: str, intent: "Intent | None") -> bool:
+    """True if the query lacks both structured intent AND meaningful length.
+
+    Specifically: no category, color, brand, gender, audience, or price
+    constraint AND the query (post-strip) is shorter than 6 chars. Used by
+    the endpoint to short-circuit gibberish like 'asdfgh' or 'a'."""
+    q = (raw_query or "").strip()
+    if len(q) < 2:
+        return True
+    if intent is None:
+        # Groq timed out / errored: only treat as low-signal if query is short.
+        return len(q) < 4
+    has_signal = any([
+        intent.category, intent.color, intent.brand,
+        intent.gender, intent.audience,
+        intent.max_price_kwd is not None, intent.min_price_kwd is not None,
+    ])
+    if has_signal:
+        return False
+    # No structured intent. Short query → almost certainly gibberish.
+    return len(q) <= 5
