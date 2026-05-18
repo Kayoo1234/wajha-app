@@ -243,6 +243,41 @@ function SearchMode() {
         </p>
       )}
 
+      {/* Empty state — first load with no query, no brand. Show example
+          query chips so the page doesn't look blank. */}
+      {!loading && !hasSearched && hits.length === 0 && !brand && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-6">
+          <p className="text-sm font-semibold text-zinc-700">Try a search:</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              "burger",
+              "iced latte",
+              "chicken combo",
+              "kung pao chicken",
+              "cheesecake",
+              "spicy",
+              "pasta",
+              "بانيني",
+            ].map((q) => (
+              <button
+                key={q}
+                onClick={() => {
+                  setQuery(q);
+                  setTimeout(runSearch, 0);
+                }}
+                className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:border-[var(--aura-primary)] hover:text-[var(--aura-primary)]"
+                dir={/[؀-ۿ]/.test(q) ? "rtl" : undefined}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-zinc-500">
+            …or tap a brand chip above to browse a specific restaurant.
+          </p>
+        </div>
+      )}
+
       {!loading && hits.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {hits.map((p) => (
@@ -276,7 +311,8 @@ function BuildAMealMode() {
   // Brand-filter mains live; pairings stay cross-brand even when a brand
   // is picked for the main, because the user explicitly wants pairings
   // across the food vertical.
-  const mains = useMemo(() => onlyBrand(rawMains, brand).slice(0, 6), [rawMains, brand]);
+  // Show 8 mains so the cross-brand spread is visible without scrolling.
+  const mains = useMemo(() => onlyBrand(rawMains, brand).slice(0, 8), [rawMains, brand]);
 
   // Reset anchor when brand changes (current anchor may no longer match)
   useEffect(() => {
@@ -286,19 +322,27 @@ function BuildAMealMode() {
     }
   }, [brand, anchor]);
 
-  // Load curated mains once
+  // Load curated mains once. With 4 food brands the catalog spans
+  // chicken combos (Cane's), paninis (Starbucks), stir-frys (PF Chang's),
+  // burgers + pasta + pizza (Cheesecake). Use the subcategory column
+  // for accurate filtering — much tighter than title-keyword guessing.
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const r = await api.smartSearch({
-          query: "chicken combo or sandwich or panini main",
+          query: "main entree dinner combo burger pasta noodle pizza chicken beef",
           lang: "en",
-          limit: 16,
+          limit: 60,
         });
         if (!alive) return;
-        const NON_MAIN = /(latte|frapp|tea|coffee|cookie|brownie|cheesecake|muffin|croissant|water|sauce|toast|lemonade)/i;
-        const filtered = onlyFood(r.hits).filter((h) => !NON_MAIN.test(h.title));
+        const MAIN_SUBCATEGORIES = new Set([
+          "main", "combo", "burger", "pasta", "pizza",
+          "noodles", "rice", "panini",
+        ]);
+        const filtered = onlyFood(r.hits).filter((h) =>
+          MAIN_SUBCATEGORIES.has((h.subcategory || "").toLowerCase()),
+        );
         setRawMains(filtered);
       } finally {
         if (alive) setLoadingMains(false);

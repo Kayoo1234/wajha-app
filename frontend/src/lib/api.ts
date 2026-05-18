@@ -188,50 +188,61 @@ export const FASHION_BRAND_SLUGS = [
 // UI accent, and a TITLE-EXCLUDE list. The excludes are critical — Cohere
 // embeddings put "hot chocolate" near "spicy hot chili" because they share
 // the "hot" token, and without explicit exclude rules, Spicy results
-// surface sweet drinks. Same defensive pattern as the fashion title rules
-// (e.g. "shoes" excludes "hoodie" / "jersey").
+// surface sweet drinks.
+//
+// Queries re-tuned 2026-05-18 for the 104-item food catalog (Cane's +
+// Starbucks + PF Chang's + Cheesecake Factory). Each query now leans into
+// 2-3 items we KNOW match the mood semantically — gives Cohere stronger
+// anchor points than generic mood words.
 export const CRAVING_MOODS = [
   {
     key: "spicy",
     label: "Spicy",
     emoji: "🌶",
-    // Query intentionally avoids "hot" (matched chocolate/caramel) and
-    // leans into "savory", "chicken", "chili" — items we actually have.
-    query: "spicy chili pepper savory chicken sauce",
-    excludes: ["chocolate", "caramel", "sweet", "vanilla", "cream", "cookie", "muffin", "cheesecake", "frappuccino", "lemonade", "tea", "macchiato"],
+    // Anchor items: Kung Pao Chicken, Buffalo Wings, Cajun Jambalaya,
+    // Spicy Chicken, Hot & Sour Soup, Dynamite Shrimp.
+    query: "spicy chili pepper kung pao buffalo cajun jambalaya sichuan",
+    excludes: ["chocolate", "caramel", "sweet", "vanilla", "cream", "cookie", "muffin", "cheesecake", "frappuccino", "lemonade", "macchiato", "latte", "iced tea", "iced green"],
     accent: "bg-red-100 text-red-700 ring-red-200",
   },
   {
     key: "comfort",
     label: "Comfort",
     emoji: "🍔",
-    query: "warm hearty comfort filling meal",
-    excludes: ["water", "lemonade", "iced tea", "refresher"],
+    // Anchor items: Burgers, Mac & Cheese, Pasta Carbonara, Alfredo,
+    // Mashed Potatoes, Chicken Marsala.
+    query: "comfort burger mac cheese pasta alfredo mashed potato hearty",
+    excludes: ["water", "lemonade", "iced tea", "refresher", "salad", "cheesecake", "cookie"],
     accent: "bg-amber-100 text-amber-700 ring-amber-200",
   },
   {
     key: "light",
     label: "Light",
     emoji: "🥗",
-    query: "light fresh healthy small portion",
-    excludes: ["frappuccino", "brownie", "cheesecake", "fries", "tailgate", "100", "50", "25", "hot chocolate"],
+    // Anchor items: Salads, Asparagus, Green Beans, Iced Green Tea,
+    // Refreshers.
+    query: "light fresh salad asparagus green beans iced tea refresher",
+    excludes: ["frappuccino", "brownie", "cheesecake", "fries", "tailgate", "100", "50", "25", "hot chocolate", "burger", "pasta", "pizza", "combo"],
     accent: "bg-emerald-100 text-emerald-700 ring-emerald-200",
   },
   {
     key: "sweet",
     label: "Sweet",
     emoji: "🍰",
-    query: "sweet dessert sugar chocolate cake",
-    excludes: ["chicken", "sandwich", "panini", "fries", "coleslaw", "americano", "espresso"],
+    // Anchor items: Cheesecakes, Banana Spring Rolls, Frappuccinos,
+    // Hot Chocolate, Strawberry Lemonade.
+    query: "sweet dessert cheesecake chocolate frappuccino strawberry banana",
+    excludes: ["chicken", "sandwich", "panini", "fries", "coleslaw", "americano", "espresso", "salad", "burger", "pasta", "pizza", "shrimp", "beef", "wings"],
     accent: "bg-pink-100 text-pink-700 ring-pink-200",
   },
   {
     key: "cold",
     label: "Cold drink",
     emoji: "🥤",
-    // "Cold drink" — emphasize iced beverages. Exclude warm/hot and food.
-    query: "iced cold refreshing chilled drink beverage",
-    excludes: ["hot", "warm", "croissant", "sandwich", "panini", "fries", "coleslaw", "cookie", "muffin", "cheesecake", "combo", "tailgate", "finger", "toast"],
+    // Anchor items: Iced Latte, Cold Brew, Frappuccinos, Refreshers,
+    // Lemonade, Iced Tea.
+    query: "iced cold brew frappuccino refresher lemonade chilled drink",
+    excludes: ["hot", "warm", "croissant", "sandwich", "panini", "fries", "coleslaw", "cookie", "muffin", "cheesecake", "combo", "tailgate", "finger", "toast", "burger", "pasta", "pizza", "salad", "wings"],
     accent: "bg-sky-100 text-sky-700 ring-sky-200",
   },
 ] as const;
