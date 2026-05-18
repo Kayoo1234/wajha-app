@@ -58,12 +58,18 @@ function detectLang(q: string): "en" | "ar" {
 // ─────────────────────────────────────────────────────────────────────────────
 // Brand chip strip — sticky at the top of the page; drives the shared filter.
 // ─────────────────────────────────────────────────────────────────────────────
+// Known-populated brands. Render as available immediately, before the
+// async /brands call resolves. Without this the chips spend the first
+// 1-2s of page load as "soon"-disabled stubs which looked broken in
+// Ali's mobile screenshot.
+const KNOWN_POPULATED = new Set(["raising_canes", "starbucks"]);
+
 function BrandChipStrip() {
   const { brand, setBrand, brandCounts } = useBrandFilter();
   // Order: chains with catalog first, then "coming soon" stubs
   const chips: Array<{ slug: string; available: boolean }> = [
-    { slug: "raising_canes",      available: (brandCounts.raising_canes ?? 0) > 0 },
-    { slug: "starbucks",          available: (brandCounts.starbucks ?? 0) > 0 },
+    { slug: "raising_canes",      available: KNOWN_POPULATED.has("raising_canes") || (brandCounts.raising_canes ?? 0) > 0 },
+    { slug: "starbucks",          available: KNOWN_POPULATED.has("starbucks")     || (brandCounts.starbucks     ?? 0) > 0 },
     { slug: "pf_changs",          available: (brandCounts.pf_changs ?? 0) > 0 },
     { slug: "cheesecake_factory", available: (brandCounts.cheesecake_factory ?? 0) > 0 },
   ];
@@ -85,7 +91,7 @@ function BrandChipStrip() {
           All Food
         </button>
         {chips.map((c) => {
-          const n = brandCounts[c.slug] ?? 0;
+          const n = brandCounts[c.slug];
           const label = BRAND_LABELS[c.slug] ?? c.slug;
           const active = brand === c.slug;
           if (!c.available) {
@@ -111,9 +117,11 @@ function BrandChipStrip() {
               }`}
             >
               {label}
-              <span className={`ml-1.5 text-[10px] font-bold ${active ? "text-white/80" : "text-zinc-400"}`}>
-                {n}
-              </span>
+              {n != null && (
+                <span className={`ml-1.5 text-[10px] font-bold ${active ? "text-white/80" : "text-zinc-400"}`}>
+                  {n}
+                </span>
+              )}
             </button>
           );
         })}
