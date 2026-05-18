@@ -103,6 +103,13 @@ function CartIcon() {
 }
 
 export default function Header() {
+  // The big Fashion/Food toggle on the home page already shows the
+  // vertical selector — duplicating the same pills in the header would
+  // be redundant. So we hide the header pills on `/` and only show
+  // them on the inner pages where the home toggle isn't visible.
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
@@ -121,19 +128,21 @@ export default function Header() {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-2 md:flex">
-          <NavPill href="/" matchPaths={FASHION_PATHS}>
-            Fashion
-          </NavPill>
-          <NavPill href="/food" matchPaths={FOOD_PATHS}>
-            <span className="inline-flex items-center gap-1.5">
-              <span>Food &amp; Beverage</span>
-              <span className="rounded-full bg-emerald-100 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
-                new
+        {!isHome && (
+          <nav className="hidden items-center gap-2 md:flex">
+            <NavPill href="/" matchPaths={FASHION_PATHS}>
+              Fashion
+            </NavPill>
+            <NavPill href="/food" matchPaths={FOOD_PATHS}>
+              <span className="inline-flex items-center gap-1.5">
+                <span>Food &amp; Beverage</span>
+                <span className="rounded-full bg-emerald-100 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
+                  new
+                </span>
               </span>
-            </span>
-          </NavPill>
-        </nav>
+            </NavPill>
+          </nav>
+        )}
 
         <div className="flex items-center gap-3">
           <StageToggle />
