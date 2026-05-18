@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useCart, type CartItem } from "@/lib/stores";
-import { BRAND_FULL_NAMES } from "@/lib/api";
+import { BRAND_FULL_NAMES, FOOD_BRAND_SLUGS } from "@/lib/api";
+
+// Aura economics — mirror cart + concierge for the invoice footer.
+const MEMBER_DISCOUNT_PCT = 0.10;
+const POINTS_APPLY = 1000;
+const POINTS_TO_KWD = 1 / 500;
+const FOOD_SET = new Set(FOOD_BRAND_SLUGS);
 
 type Step = {
   label: string;
@@ -59,28 +65,54 @@ export default function SuccessPage() {
   }
 
   const brandSlugs = Object.keys(byBrand);
-  const grandTotal = total + 2.0;
+  const foodBrandsInCart = brandSlugs.filter((s) => FOOD_SET.has(s));
+  const retailBrandsInCart = brandSlugs.filter((s) => !FOOD_SET.has(s));
+  const hasFood = foodBrandsInCart.length > 0;
+  const hasRetail = retailBrandsInCart.length > 0;
 
+  const conciergeFee = 2.0;
+  const memberSavings = total * MEMBER_DISCOUNT_PCT;
+  const pointsCredit = POINTS_APPLY * POINTS_TO_KWD;
+  const auraTotal = Math.max(0, total - memberSavings - pointsCredit);
+  const grandTotal = auraTotal + conciergeFee;
+
+  // Timeline reflects the actual delivery model — retail consolidates,
+  // F&B doesn't, mixed gets both stages.
   const baseSteps: Omit<Step, "done" | "active">[] = [
     {
       label: "Order received",
-      detail: `Aura received your order for ${items.length} items across ${brandSlugs.length} brands. Payment captured (demo).`,
+      detail: `Aura received your order for ${items.length} items across ${brandSlugs.length} brand${brandSlugs.length === 1 ? "" : "s"}. Aura member price + points applied. Payment captured (demo).`,
     },
     {
       label: "Concierge accepted",
-      detail: `Aura Concierge ops have queued ${brandSlugs.length} separate brand orders for fulfilment.`,
+      detail: `Aura Concierge ops have queued ${brandSlugs.length} separate orders for fulfilment${hasFood && hasRetail ? " (retail + F&B routed differently)" : ""}.`,
     },
     {
       label: "Procuring from brands",
       detail: brandSlugs.map((s) => BRAND_FULL_NAMES[s] ?? s).join(" · "),
     },
-    {
-      label: "Consolidating at Alshaya warehouse",
-      detail: "All items received in Kuwait warehouse, packing into one parcel.",
-    },
+    hasRetail && hasFood
+      ? {
+          label: "Routing: retail to warehouse · F&B to restaurants",
+          detail:
+            `Retail items (${retailBrandsInCart.length} brand${retailBrandsInCart.length === 1 ? "" : "s"}) consolidate at Alshaya's Kuwait warehouse. F&B items (${foodBrandsInCart.length} restaurant${foodBrandsInCart.length === 1 ? "" : "s"}) deliver per-restaurant — hot food stays hot.`,
+        }
+      : hasFood
+      ? {
+          label: "F&B routed to restaurants",
+          detail: `${foodBrandsInCart.length} restaurant${foodBrandsInCart.length === 1 ? "" : "s"} preparing your order(s) per-pickup. Industry-standard food-physics flow.`,
+        }
+      : {
+          label: "Consolidating at Alshaya warehouse",
+          detail: "All items received in Kuwait warehouse, packing into one parcel.",
+        },
     {
       label: "Out for delivery",
-      detail: "Your unified parcel ships today. Tracking link will follow.",
+      detail: hasFood && hasRetail
+        ? "Retail parcel ships today + F&B deliveries dispatched per-restaurant. Two delivery slots, one invoice."
+        : hasFood
+        ? "Per-restaurant deliveries dispatched. One Aura invoice covers all."
+        : "Your unified parcel ships today. Tracking link will follow.",
     },
   ];
 
@@ -206,20 +238,35 @@ export default function SuccessPage() {
               <td className="pt-3 text-right text-zinc-900">{total.toFixed(3)} KWD</td>
             </tr>
             <tr>
-              <td colSpan={3} className="text-right text-zinc-600">
-                Aura Concierge fee
+              <td colSpan={3} className="text-right text-emerald-700">
+                Aura member price (10%)
               </td>
-              <td className="text-right text-zinc-900">2.000 KWD</td>
+              <td className="text-right text-emerald-700">−{memberSavings.toFixed(3)} KWD</td>
+            </tr>
+            <tr>
+              <td colSpan={3} className="text-right text-emerald-700">
+                Points applied ({POINTS_APPLY.toLocaleString()} pts)
+              </td>
+              <td className="text-right text-emerald-700">−{pointsCredit.toFixed(3)} KWD</td>
             </tr>
             <tr>
               <td colSpan={3} className="text-right text-zinc-600">
-                Consolidated delivery
+                Aura Concierge fee
+              </td>
+              <td className="text-right text-zinc-900">{conciergeFee.toFixed(3)} KWD</td>
+            </tr>
+            <tr>
+              <td colSpan={3} className="text-right text-zinc-600">
+                Delivery{" "}
+                {hasFood && hasRetail && "(retail + F&B routed differently)"}
+                {hasFood && !hasRetail && "(per-restaurant F&B)"}
+                {!hasFood && hasRetail && "(consolidated)"}
               </td>
               <td className="text-right text-emerald-700">Included</td>
             </tr>
             <tr className="text-base font-bold">
               <td colSpan={3} className="pt-3 text-right text-zinc-900">
-                Total
+                You paid
               </td>
               <td className="pt-3 text-right text-zinc-900">
                 {grandTotal.toFixed(3)} KWD

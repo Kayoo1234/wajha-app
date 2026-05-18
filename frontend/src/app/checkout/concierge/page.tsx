@@ -4,7 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCart, type CartItem } from "@/lib/stores";
-import { BRAND_FULL_NAMES } from "@/lib/api";
+import { BRAND_FULL_NAMES, FOOD_BRAND_SLUGS } from "@/lib/api";
+
+// Aura economics — illustrative for demo. Real rates configured by
+// Alshaya in pilot. See PITCH_NOTES Section 2 Stage 2 for the
+// channel-tiered discount matrix.
+const MEMBER_DISCOUNT_PCT = 0.10;
+const POINTS_APPLY = 1000;
+const POINTS_TO_KWD = 1 / 500;
+const FOOD_SET = new Set(FOOD_BRAND_SLUGS);
 
 export default function ConciergeConfirmationPage() {
   const router = useRouter();
@@ -44,8 +52,16 @@ export default function ConciergeConfirmationPage() {
   }
 
   const brandSlugs = Object.keys(byBrand);
+  const foodBrandsInCart = brandSlugs.filter((s) => FOOD_SET.has(s));
+  const retailBrandsInCart = brandSlugs.filter((s) => !FOOD_SET.has(s));
+  const hasFood = foodBrandsInCart.length > 0;
+  const hasRetail = retailBrandsInCart.length > 0;
+
   const conciergeFee = 2.0;
-  const grandTotal = total + conciergeFee;
+  const memberSavings = total * MEMBER_DISCOUNT_PCT;
+  const pointsCredit = POINTS_APPLY * POINTS_TO_KWD;
+  const auraTotal = total - memberSavings - pointsCredit;
+  const grandTotal = Math.max(0, auraTotal) + conciergeFee;
 
   function placeOrder() {
     setSubmitting(true);
@@ -71,24 +87,40 @@ export default function ConciergeConfirmationPage() {
 
       {/* What happens next */}
       <section className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 p-5 text-sm text-[var(--aura-primary-dark)]">
-        <h2 className="font-bold">What happens after you tap “Place order”</h2>
+        <h2 className="font-bold">What happens after you tap &ldquo;Place order&rdquo;</h2>
         <ol className="mt-2 space-y-1.5 text-[13px]">
           <li>
             <strong>1.</strong> Aura charges your registered K-Net card{" "}
-            <strong>{grandTotal.toFixed(3)} KWD</strong>. One OTP, sent to your
-            Aura-registered phone.
+            <strong>{grandTotal.toFixed(3)} KWD</strong>. Aura member price,
+            points redemption, and the employee discount tier (if applicable)
+            are all already applied below.
           </li>
           <li>
             <strong>2.</strong> Aura Concierge ops places{" "}
             <strong>{brandSlugs.length}</strong> separate orders on your behalf
             using authorised purchasing accounts on each brand&apos;s site.
-            Brand-side OTPs go to the ops team — not to you.
+            Brand-side OTPs go to ops, not to you.
           </li>
           <li>
-            <strong>3.</strong> Each brand ships to Alshaya&apos;s consolidation
-            warehouse. Aura logistics packs them into{" "}
-            <strong>one parcel</strong> and delivers within{" "}
-            <strong>2-4 business days</strong>.
+            <strong>3.</strong>{" "}
+            {hasRetail && (
+              <>
+                <strong>Retail</strong> ({retailBrandsInCart.length} brand
+                {retailBrandsInCart.length === 1 ? "" : "s"}) consolidates to
+                Alshaya&apos;s warehouse and delivers as one parcel within{" "}
+                <strong>2–4 business days</strong>.
+              </>
+            )}
+            {hasRetail && hasFood && " "}
+            {hasFood && (
+              <>
+                <strong>F&amp;B</strong> ({foodBrandsInCart.length} restaurant
+                {foodBrandsInCart.length === 1 ? "" : "s"}) deliver
+                per-restaurant — food physics. Hot food stays hot. Industry
+                standard (Talabat / Deliveroo / Uber Eats all enforce the same
+                rule).
+              </>
+            )}
           </li>
           <li>
             <strong>4.</strong> Returns: contact Aura — we handle each brand&apos;s
@@ -128,16 +160,36 @@ export default function ConciergeConfirmationPage() {
             <span>Cart subtotal</span>
             <span>{total.toFixed(3)} KWD</span>
           </div>
-          <div className="flex justify-between text-zinc-600">
+          {/* Aura economics — what makes Wajha-checkout different from Talabat */}
+          <div className="flex justify-between text-emerald-700">
+            <span>Aura member price (10%)</span>
+            <span>−{memberSavings.toFixed(3)} KWD</span>
+          </div>
+          <div className="flex justify-between text-emerald-700">
+            <span>
+              Points applied ({POINTS_APPLY.toLocaleString()} pts)
+            </span>
+            <span>−{pointsCredit.toFixed(3)} KWD</span>
+          </div>
+          <div className="flex justify-between text-zinc-500 italic text-xs">
+            <span>Employee discount tier</span>
+            <span>If applicable · Alshaya sets rate</span>
+          </div>
+          <div className="flex justify-between text-zinc-600 pt-2 border-t border-zinc-100">
             <span>Aura Concierge service fee</span>
             <span>{conciergeFee.toFixed(3)} KWD</span>
           </div>
           <div className="flex justify-between text-zinc-600">
-            <span>Consolidated delivery</span>
+            <span>
+              Delivery{" "}
+              {hasFood && hasRetail && "(retail + per-restaurant F&B)"}
+              {hasFood && !hasRetail && "(per-restaurant F&B)"}
+              {!hasFood && hasRetail && "(consolidated)"}
+            </span>
             <span className="text-emerald-700">Included</span>
           </div>
           <div className="mt-2 flex items-center justify-between border-t border-zinc-200 pt-3 text-base font-bold text-zinc-900">
-            <span>Total</span>
+            <span>You pay</span>
             <span>{grandTotal.toFixed(3)} KWD</span>
           </div>
         </div>
