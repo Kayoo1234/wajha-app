@@ -100,7 +100,7 @@ def search_smart(req: smart_search.SmartSearchRequest):
         )
 
     # 1) Parse intent (cache + timeout)
-    intent, intent_note = smart_search.extract_intent_resilient(req.query, req.lang, timeout_ms=3000)
+    intent, intent_note = smart_search.extract_intent_resilient(req.query, req.lang, timeout_ms=4500)
     if intent_note:
         notes.append(intent_note)
 
@@ -174,7 +174,21 @@ def search_smart(req: smart_search.SmartSearchRequest):
             hits = title_filtered
             notes.append(f"title rule for '{intent.category}': {len(title_filtered)} of {initial_n} matched")
         else:
-            notes.append(f"title rule for '{intent.category}' matched 0 — showing unfiltered kNN")
+            # Category requested, but nothing in catalog matches the rule.
+            # When a rule EXISTS for the category, return empty rather than
+            # leaking unrelated kNN hits — better demo UX than showing
+            # "watches" that are actually BBW body sprays.
+            rules_exist = intent.category.strip().lower() in smart_search._CATEGORY_TITLE_RULES
+            if rules_exist:
+                notes.append(
+                    f"No {intent.category} in our catalog right now. "
+                    f"This is the prototype's 4-brand demo — Cane's / Starbucks / "
+                    f"PF Chang's / Cheesecake Factory tabs will expand the catalog."
+                )
+                return smart_search.SmartSearchResponse(
+                    intent=intent, hits=[], total=0, notes=notes,
+                )
+            notes.append(f"title rule for '{intent.category}' not defined — showing kNN")
 
     # 4b) Demographics filter — reject titles that contradict gender / audience
     if intent.gender or intent.audience:
@@ -211,8 +225,14 @@ def search_smart(req: smart_search.SmartSearchRequest):
             )
 
     # 5b) Modesty filter — drops titles containing mini/crop/strappy/halter
-    # when the user signalled modest intent.
-    if intent.modest:
+    # when the user signalled modest intent. Belt + braces: if Groq missed
+    # the modest field but the raw query contains a modesty keyword, still
+    # apply the filter. This survives Groq cold-start timeouts.
+    modest_signal = bool(intent.modest) or any(
+        w in (req.query or "").lower()
+        for w in ("modest", "covered", "long sleeve", "long-sleeve", "محتشم", "محتشمة")
+    )
+    if modest_signal:
         before_modest = len(hits)
         modest_filtered = [h for h in hits if smart_search.title_matches_modesty(h.title, True)]
         if modest_filtered:

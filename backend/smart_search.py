@@ -537,5 +537,8 @@ def is_low_signal(raw_query: str, intent: "Intent | None") -> bool:
     ])
     if has_signal:
         return False
-    # No structured intent. Short query → almost certainly gibberish.
-    return len(q) <= 5
+    # No structured intent. Short-ish query → almost certainly gibberish.
+    # 7 chars catches "asdfgh", "qwerty", "zxcvbn" but lets real words like
+    # "shirt" / "dress" through (they would have had intent.category set
+    # anyway by Groq; this branch only fires when Groq returned nothing).
+    return len(q) <= 7
