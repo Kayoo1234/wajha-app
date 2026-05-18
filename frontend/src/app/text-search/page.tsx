@@ -14,9 +14,12 @@ function TextSearchInner() {
   const stage = useStage((s) => s.stage);
 
   const [query, setQuery] = useState(params.get("q") ?? "");
-  const [lang, setLang] = useState<"en" | "ar">(
-    (params.get("lang") as "en" | "ar") ?? "en",
-  );
+  // Auto-detect: any Arabic char in the query → ar, else en.
+  // Cohere's embed-multilingual-v3 lives in a shared semantic space, so the
+  // search backend works regardless. lang is used only to flip the input dir
+  // and to render the "Wajha understood:" chips + placeholders in the right
+  // language. No user-facing toggle — friction nobody asked for.
+  const lang: "en" | "ar" = /[؀-ۿ]/.test(query) ? "ar" : "en";
   const [maxPrice, setMaxPrice] = useState<string>(params.get("max") ?? "");
   const [brand, setBrand] = useState<string | null>(
     params.get("brand") ?? null,
@@ -72,10 +75,10 @@ function TextSearchInner() {
     // setTimeout(() => runSearch(b), 0).
     const effectiveBrand = brandOverride !== undefined ? brandOverride : brand;
 
-    // Sync URL so it's shareable / re-runnable
+    // Sync URL so it's shareable / re-runnable. lang is no longer persisted —
+    // it's derived from query content at render time.
     const sp = new URLSearchParams();
     sp.set("q", query);
-    if (lang === "ar") sp.set("lang", "ar");
     if (maxPrice) sp.set("max", maxPrice);
     if (effectiveBrand) sp.set("brand", effectiveBrand);
     router.replace(`/text-search?${sp.toString()}`);
@@ -143,30 +146,18 @@ function TextSearchInner() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
           <label className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Search Alshaya
+            Search · ابحث
           </label>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && runSearch()}
-            placeholder={
-              lang === "ar"
-                ? "اكتب ما تبحث عنه…"
-                : "Try “white t-shirt”, “linen dress”, “black candle”"
-            }
+            placeholder='Search across Alshaya · ابحث في الشايع'
             dir={lang === "ar" ? "rtl" : "ltr"}
             className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base outline-none focus:border-[var(--aura-primary)] focus:ring-1 focus:ring-[var(--aura-primary)]"
           />
         </div>
         <div className="flex gap-2">
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value as "en" | "ar")}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-3 text-sm"
-          >
-            <option value="en">EN</option>
-            <option value="ar">العربية</option>
-          </select>
           <input
             type="number"
             step="0.001"
