@@ -188,8 +188,12 @@ def warmup() -> None:
 def extract_intent_resilient(
     raw_query: str, lang: str = "en", timeout_ms: int = 1500
 ) -> tuple[Intent | None, str]:
-    """Returns (intent_or_None, note). note is empty on cache hit, 'cached', 'timeout',
-    or 'fresh' to help the endpoint annotate transparency notes for the UI."""
+    """Returns (intent, note). intent is never None — when Groq fails (timeout
+    / rate-limit / error), we fall back to a regex extractor that still
+    pulls color + category + price from the raw query. That keeps the
+    demo's color filter, title filter, and price sort working even with
+    Groq quota exhausted. Type signature keeps `None` for backward
+    compatibility with callers, but in practice you always get an Intent."""
     key = (raw_query.strip().lower(), lang)
     now = time.time()
 
@@ -205,9 +209,19 @@ def extract_intent_resilient(
     try:
         intent = fut.result(timeout=timeout_ms / 1000.0)
     except FutureTimeoutError:
-        return None, f"Groq exceeded {timeout_ms}ms; using plain kNN"
+        rx = regex_extract_intent(raw_query)
+        note = (
+            f"Groq timeout >{timeout_ms}ms — regex fallback "
+            f"extracted color={rx.color}, category={rx.category}"
+        )
+        return rx, note
     except Exception as e:
-        return None, f"intent extraction failed ({type(e).__name__}); using plain kNN"
+        rx = regex_extract_intent(raw_query)
+        note = (
+            f"Groq error ({type(e).__name__}) — regex fallback "
+            f"extracted color={rx.color}, category={rx.category}"
+        )
+        return rx, note
 
     _INTENT_CACHE[key] = (intent, now)
     return intent, ""
@@ -479,6 +493,134 @@ def is_deal_query(raw_query: str, intent_value: str) -> bool:
         return True
     q = raw_query.lower()
     return any(w in q for w in _DEAL_WORDS)
+
+
+# ---------------------------------------------------------------------------
+# Regex-fallback intent extraction
+#
+# Other-Claude's red-team review flagged the silent-failure path: when Groq
+# rate-limits or errors, the pipeline used to bail to plain kNN with ZERO
+# filters — so "black t-shirt" returned random kNN matches because color
+# was a soft embedding signal not a hard filter.
+#
+# Fix: extract color / category / price from the raw query via regex BEFORE
+# falling back. Less smart than Groq (English vocab only, no audience or
+# occasion inference) but covers the common case so the demo stays
+# defensible even under Groq quota exhaustion. Same color + category
+# vocabulary as backfill_colors.py + _CATEGORY_TO_PREFIX.
+# ---------------------------------------------------------------------------
+
+_COLOR_WORDS = {
+    "black", "white", "grey", "gray", "navy", "blue", "red", "green",
+    "pink", "brown", "beige", "cream", "ivory", "yellow", "orange",
+    "purple", "khaki", "olive", "silver", "gold", "burgundy", "maroon",
+    "peach", "mint", "lavender", "tan", "rose", "teal", "coral",
+    "salmon", "mustard", "denim", "stone", "sage", "sky", "lime",
+}
+_COLOR_ALIASES = {"gray": "grey"}
+
+_CATEGORY_WORDS_REGEX = {
+    "t-shirt", "tshirt", "tee", "shirt", "dress", "skirt", "blouse",
+    "trousers", "pants", "jeans", "shorts", "jacket", "coat", "blazer",
+    "sweater", "hoodie", "sweatshirt", "vest", "top", "polo", "jersey",
+    "scarf", "belt", "leggings", "joggers", "tracksuit",
+    "shoe", "shoes", "sneaker", "sneakers", "boot", "boots", "sandal",
+    "sandals", "loafer", "trainer", "slipper", "slide",
+    "candle", "soap", "lotion", "perfume", "cologne", "fragrance",
+    "freshener", "spray", "mist",
+    "bag", "tote", "backpack", "handbag", "purse", "clutch",
+    "watch", "smartwatch",
+    "combo", "sandwich", "burger", "panini", "latte", "frappuccino",
+    "frappe", "espresso", "cappuccino", "americano", "mocha", "tea",
+    "drink", "lemonade", "water", "fries", "wings", "rice", "salad",
+    "dessert", "cookie", "muffin", "cake", "croissant",
+    "pillow", "cushion", "blanket", "rug",
+}
+
+_PRICE_BETWEEN_RE = re.compile(
+    r"between\s*(\d+(?:\.\d+)?)\s*(?:kwd?\s*)?(?:and|to|-)\s*(\d+(?:\.\d+)?)\s*kwd?",
+    re.IGNORECASE,
+)
+_PRICE_UNDER_RE = re.compile(
+    r"(?:under|below|less than|<=?|≤)\s*(\d+(?:\.\d+)?)\s*kwd?",
+    re.IGNORECASE,
+)
+_PRICE_OVER_RE = re.compile(
+    r"(?:over|above|more than|>=?|≥)\s*(\d+(?:\.\d+)?)\s*kwd?",
+    re.IGNORECASE,
+)
+_TOKEN_RE = re.compile(r"[a-z؀-ۿ-]+")
+
+# Multi-word categories that should be detected before the single-word loop
+_MULTIWORD_CATEGORIES: list[tuple[str, str]] = [
+    ("t-shirt", "t-shirt"),
+    ("t shirt", "t-shirt"),
+    ("body lotion", "body lotion"),
+    ("body cream", "body cream"),
+    ("iced latte", "latte"),
+    ("iced americano", "americano"),
+    ("hot chocolate", "hot chocolate"),
+    ("cold brew", "cold brew"),
+]
+
+
+def regex_extract_intent(query: str) -> Intent:
+    """Pure-regex intent extraction — runs when Groq fails so the demo
+    still provides structured filters (color + category + price) even
+    without an LLM. Covers the bread-and-butter case Other-Claude's
+    red-team review identified: "black t-shirt" must still get color
+    extracted to color='black' even when Groq is rate-limited."""
+    q = (query or "").lower()
+    tokens = _TOKEN_RE.findall(q)
+
+    # Multi-word category first (so "t-shirt" wins over "shirt")
+    category: str | None = None
+    for needle, canonical in _MULTIWORD_CATEGORIES:
+        if needle in q:
+            category = canonical
+            break
+    if category is None:
+        for tok in tokens:
+            if tok in _CATEGORY_WORDS_REGEX:
+                category = tok
+                break
+
+    # Color
+    color: str | None = None
+    for tok in tokens:
+        if tok in _COLOR_WORDS:
+            color = _COLOR_ALIASES.get(tok, tok)
+            break
+
+    # Price (between > under > over precedence)
+    max_price: float | None = None
+    min_price: float | None = None
+    m = _PRICE_BETWEEN_RE.search(q)
+    if m:
+        min_price, max_price = float(m.group(1)), float(m.group(2))
+    else:
+        m = _PRICE_UNDER_RE.search(q)
+        if m:
+            max_price = float(m.group(1))
+        m = _PRICE_OVER_RE.search(q)
+        if m:
+            min_price = float(m.group(1))
+
+    # Deal intent
+    intent_str = "discounted" if any(w in q for w in _DEAL_WORDS) else "specific_search"
+
+    return Intent(
+        query_cleaned=(query or "").strip()[:60],
+        category=category,
+        color=color,
+        brand=None,        # brand-name detection happens frontend-side
+        gender=None,       # gender/audience need LLM — not regex-recoverable
+        audience=None,
+        max_price_kwd=max_price,
+        min_price_kwd=min_price,
+        intent=intent_str,
+        modest=None,
+    )
 
 
 # ---------------------------------------------------------------------------
